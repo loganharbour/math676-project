@@ -1,0 +1,16 @@
+# eclipse
+.cproject
+.project
+qtcreator/
+
+# cmake stuff
+CMakeFiles/
+Makefile
+CmakeCache.txt
+cmake_install.cmake
+
+# outputs
+*eps
+*vtk
+*gnuplot
+/build/
