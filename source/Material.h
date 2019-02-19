@@ -3,20 +3,26 @@
 
 #include <iostream>
 
+DeclException1(MaterialExists, int, "Material with id " << arg1 << " already exists.");
+
 class Material
 {
 public:
-  Material(double sig_t, double sig_s, double q) : sig_t(sig_t), sig_s(sig_s), q(q) {}
-  Material(const Material & material) : sig_t(material.sig_t), sig_s(material.sig_s), q(material.q)
+  Material(const double sigma_t, const double sigma_s, const double src)
+    : sigma_s(sigma_s), sigma_t(sigma_t), src(src)
+  {
+  }
+  Material(const Material & material)
+    : sigma_s(material.sigma_s), sigma_t(material.sigma_t), src(material.src)
   {
   }
 
-  // Macroscopic total cross section [1/cm]
-  const double sig_t;
   // Macroscopic scattering cross section [1/cm]
-  const double sig_s;
+  const double sigma_s;
+  // Macroscopic total cross section [1/cm]
+  const double sigma_t;
   // Volumetric source term [p/cm^3]
-  const double q;
+  const double src;
 };
 
 #endif /* MATERIAL_H */

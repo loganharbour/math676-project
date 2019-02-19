@@ -33,8 +33,6 @@
 
 using namespace dealii;
 
-DeclException1(MaterialExists, int, "Material with id " << arg1 << " already exists.");
-
 class SNProblem
 {
 public:
@@ -63,6 +61,7 @@ private:
 
   // Scalar flux solution
   Vector<double> phi;
+  Vector<double> phi_old;
 
   // Material properties
   std::map<const unsigned int, const Material> materials;

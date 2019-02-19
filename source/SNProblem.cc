@@ -22,6 +22,7 @@ SNProblem::setup_system()
 
   system_matrix.reinit(sparsity_pattern);
   phi.reinit(dof_handler.n_dofs());
+  phi_old.reinit(dof_handler.n_dofs());
   rhs.reinit(dof_handler.n_dofs());
   solution.reinit(dof_handler.n_dofs());
 
@@ -72,29 +73,50 @@ void
 SNProblem::integrate_cell(DoFInfo & dinfo, CellInfo & info, Point<2> dir)
 {
   const FEValuesBase<2> & fe_v = info.fe_values();
+  const unsigned int n_q = fe_v.n_quadrature_points;
+  const unsigned int n_dofs = fe_v.dofs_per_cell;
+
   FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
   Vector<double> & local_vector = dinfo.vector(0).block(0);
   const std::vector<double> & JxW = fe_v.get_JxW_values();
 
-  // std::vector<double> local_phi;
-  // fe_v.get_function_values(phi, local_phi);
+  // Get material for this cell
+  const unsigned int material_id = dinfo.cell->material_id();
+  Assert(materials.find(material_id) != materials.end(),
+         ExcMessage("Material id not found in material map"));
+  const Material & material = materials.at(material_id);
+  const bool has_scattering = material.sigma_s != 0;
 
-  for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
+  // Obtain the old scalar flux if scattering exists in this cell
+  std::vector<double> local_phi_old;
+  if (has_scattering) {
+    local_phi_old.resize(n_dofs);
+    for (unsigned int i = 0; i < n_dofs; ++i)
+      local_phi_old[i] = phi[dinfo.indices[i]];
+  }
+
+  for (unsigned int q = 0; q < n_q; ++q)
   {
-    for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
+    for (unsigned int i = 0; i < n_dofs; ++i)
     {
       const double u_i = fe_v.shape_value(i, q);
-      for (unsigned int j = 0; j < fe_v.dofs_per_cell; ++j)
+      double phi_old_q = 0;
+      for (unsigned int j = 0; j < n_dofs; ++j)
       {
+        const double v_j = fe_v.shape_value(j, q);
         // Streaming term
-        local_matrix(i, j) -= u_i * fe_v.shape_grad(j, q) * dir * JxW[q];
+        local_matrix(i, j) -= v_j * fe_v.shape_grad(i, q) * dir * JxW[q];
         // Loss term
-        local_matrix(i, j) += u_i * fe_v.shape_value(j, q) * sig_t * JxW[q];
+        local_matrix(i, j) += u_i * v_j * material.sigma_t * JxW[q];
+        // Accumulate scalar flux at this qp
+        if (has_scattering)
+          phi_old_q += local_phi_old[j] * v_j;
       }
-      // Source gain
-      local_vector(i) += u_i * Q * JxW[q];
-      // Scattering gain
-      // local_vector(i) += u_i * sig_s * local_phi[q] * JxW[q];
+      // Source gain term
+      local_vector(i) += u_i * material.src * JxW[q];
+      // Scattering gain term
+      if (has_scattering)
+        local_vector(i) += u_i * material.sigma_s * phi_old_q * JxW[q];
     }
   }
 }
@@ -150,32 +172,38 @@ SNProblem::integrate_face(
 void
 SNProblem::solve_direction(unsigned int d)
 {
-  SolverControl solver_control(1000, 1e-12);
+  SolverControl solver_control(10000, 1e-10);
   SolverRichardson<> solver(solver_control);
   PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
   preconditioner.initialize(system_matrix, fe.dofs_per_cell);
   solver.solve(system_matrix, solution, rhs, preconditioner);
-
-  // Update scalar flux at each node
-  const double w = aq.w(d);
-  for (unsigned int i = 0; i < solution.size(); ++i)
-    phi[i] += w * solution[i];
 }
 
 void
 SNProblem::solve()
 {
+  // Zero scalar flux
+  phi = 0;
+
   for (unsigned int d = 0; d < aq.n_dir(); ++d)
   {
     std::cout << "Solving direction " << d << std::endl;
+
+    // Assemble and solve
     assemble_direction(d);
     solve_direction(d);
+
+    // Update scalar flux at each node
+    phi.add(aq.w(d), solution);
   }
+
+  phi_old = phi;
 }
 
 void
 SNProblem::output_results() const
 {
+  std::cout << phi << std::endl;
   const std::string filename = "sol.gnuplot";
   deallog << "Writing solution to <" << filename << ">" << std::endl;
   std::ofstream gnuplot_output(filename.c_str());
@@ -184,6 +212,15 @@ SNProblem::output_results() const
   data_out.add_data_vector(phi, "phi");
   data_out.build_patches();
   data_out.write_gnuplot(gnuplot_output);
+}
+
+void
+SNProblem::add_material(const unsigned int id, const Material & material)
+{
+  if (materials.find(id) != materials.end())
+    throw ExcMessage("Material id already exists in material map");
+  else
+    materials.emplace(id, material);
 }
 
 void
