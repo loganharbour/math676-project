@@ -9,7 +9,7 @@ SNProblem::SNProblem() : mapping(), fe(1), dof_handler(triangulation) {}
 void
 SNProblem::setup_system()
 {
-  GridGenerator::hyper_cube(triangulation, -1, 1);
+  GridGenerator::hyper_cube(triangulation, 0, 10);
   triangulation.refine_global(5);
 
   aq.init(10);
@@ -105,7 +105,7 @@ SNProblem::integrate_cell(DoFInfo & dinfo, CellInfo & info, Point<2> dir)
       {
         const double v_j = fe_v.shape_value(j, q);
         // Streaming term
-        local_matrix(i, j) -= v_j * fe_v.shape_grad(i, q) * dir * JxW[q];
+        local_matrix(i, j) -= v_j * dir * fe_v.shape_grad(i, q) * JxW[q];
         // Loss term
         local_matrix(i, j) += u_i * v_j * material.sigma_t * JxW[q];
         // Accumulate scalar flux at this qp
