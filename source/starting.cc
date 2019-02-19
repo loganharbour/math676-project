@@ -9,7 +9,7 @@ main()
   try
   {
     SNProblem snproblem;
-    snproblem.add_material(0, Material(0.1, 0.0, 1.0));
+    snproblem.add_material(0, Material(1.0, 0.0, 1.0));
     snproblem.run();
   }
   catch (std::exception & exc)
