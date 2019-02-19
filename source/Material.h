@@ -3,8 +3,6 @@
 
 #include <iostream>
 
-DeclException1(MaterialExists, int, "Material with id " << arg1 << " already exists.");
-
 class Material
 {
 public:
