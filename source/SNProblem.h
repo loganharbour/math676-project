@@ -29,14 +29,19 @@
 #include <deal.II/meshworker/simple.h>
 
 #include "AngularQuadrature.h"
+#include "Material.h"
 
 using namespace dealii;
+
+DeclException1(MaterialExists, int, "Material with id " << arg1 << " already exists.");
 
 class SNProblem
 {
 public:
   SNProblem();
   void run();
+
+  void add_material(const unsigned int id, const Material & material);
 
 private:
   void setup_system();
@@ -60,10 +65,7 @@ private:
   Vector<double> phi;
 
   // Material properties
-  double sig_a = 1.0;
-  double sig_s = 0.0;
-  double sig_t = 1.0;
-  double Q = 1.0;
+  std::map<const unsigned int, const Material> materials;
 
   // Angular quadrature
   AngularQuadrature aq;
