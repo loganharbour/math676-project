@@ -1,44 +1,38 @@
-#include "SNProblem.h"
+#include "description.h"
+#include "discretization.h"
+#include "material.h"
+#include "problem.h"
 
-#include <fstream>
+#include <deal.II/lac/precondition_block.h>
+#include <deal.II/lac/solver_richardson.h>
 
+namespace SNProblem
+{
 using namespace dealii;
 
-SNProblem::SNProblem() : mapping(), fe(1), dof_handler(triangulation) {}
+Problem::Problem(const Description & description, Discretization & discretization)
+  : description(description),
+    discretization(discretization),
+    dof_handler(discretization.get_dof_handler()),
+    aq(discretization.get_aq()),
+    materials(description.get_materials())
+{
+}
 
 void
-SNProblem::setup_system()
+Problem::setup()
 {
-  GridGenerator::hyper_cube(triangulation, 0, 10);
-  triangulation.refine_global(5);
-
-  aq.init(10);
-
-  dof_handler.distribute_dofs(fe);
-
-  DynamicSparsityPattern dsp(dof_handler.n_dofs());
-  DoFTools::make_flux_sparsity_pattern(dof_handler, dsp);
-  sparsity_pattern.copy_from(dsp);
-
-  system_matrix.reinit(sparsity_pattern);
   phi.reinit(dof_handler.n_dofs());
   phi_old.reinit(dof_handler.n_dofs());
   rhs.reinit(dof_handler.n_dofs());
   solution.reinit(dof_handler.n_dofs());
+  system_matrix.reinit(discretization.get_sparsity_pattern());
 
-  const unsigned int n_points = dof_handler.get_fe().degree + 1;
-  info_box.initialize_gauss_quadrature(n_points, n_points, n_points);
-
-  info_box.initialize_update_flags();
-  UpdateFlags update_flags = update_quadrature_points | update_values | update_gradients;
-  info_box.add_update_flags(update_flags, true, true, true, true);
-
-  info_box.initialize(fe, mapping);
   assembler.initialize(system_matrix, rhs);
 }
 
 void
-SNProblem::assemble_direction(unsigned int d)
+Problem::assemble_direction(unsigned int d)
 {
   const auto dir = aq.dir(d);
   system_matrix = 0;
@@ -48,21 +42,21 @@ SNProblem::assemble_direction(unsigned int d)
 
   // Lambda functions for passing into MeshWorker::loop
   const auto cell_worker = [&](DoFInfo & dinfo, CellInfo & info) {
-    SNProblem::integrate_cell(dinfo, info, dir);
+    Problem::integrate_cell(dinfo, info, dir);
   };
   const auto boundary_worker = [&](DoFInfo & dinfo, CellInfo & info) {
-    SNProblem::integrate_boundary(dinfo, info, dir);
+    Problem::integrate_boundary(dinfo, info, dir);
   };
   const auto face_worker =
       [&](DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2) {
-        SNProblem::integrate_face(dinfo1, dinfo2, info1, info2, dir);
+        Problem::integrate_face(dinfo1, dinfo2, info1, info2, dir);
       };
 
   MeshWorker::loop<2, 2, MeshWorker::DoFInfo<2>, MeshWorker::IntegrationInfoBox<2>>(
       dof_handler.begin_active(),
       dof_handler.end(),
       dof_info,
-      info_box,
+      discretization.info_box,
       cell_worker,
       boundary_worker,
       face_worker,
@@ -70,7 +64,7 @@ SNProblem::assemble_direction(unsigned int d)
 }
 
 void
-SNProblem::integrate_cell(DoFInfo & dinfo, CellInfo & info, Point<2> dir)
+Problem::integrate_cell(DoFInfo & dinfo, CellInfo & info, Point<2> dir)
 {
   const FEValuesBase<2> & fe_v = info.fe_values();
   const unsigned int n_q = fe_v.n_quadrature_points;
@@ -89,10 +83,11 @@ SNProblem::integrate_cell(DoFInfo & dinfo, CellInfo & info, Point<2> dir)
 
   // Obtain the old scalar flux if scattering exists in this cell
   std::vector<double> local_phi_old;
-  if (has_scattering) {
+  if (has_scattering)
+  {
     local_phi_old.resize(n_dofs);
     for (unsigned int i = 0; i < n_dofs; ++i)
-      local_phi_old[i] = phi[dinfo.indices[i]];
+      local_phi_old[i] = phi_old[dinfo.indices[i]];
   }
 
   for (unsigned int q = 0; q < n_q; ++q)
@@ -122,12 +117,12 @@ SNProblem::integrate_cell(DoFInfo & dinfo, CellInfo & info, Point<2> dir)
 }
 
 void
-SNProblem::integrate_boundary(DoFInfo & dinfo, CellInfo & info, Point<2> dir)
+Problem::integrate_boundary(DoFInfo & /*dinfo*/, CellInfo & /*info*/, Point<2> /*dir*/)
 {
 }
 
 void
-SNProblem::integrate_face(
+Problem::integrate_face(
     DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2, Point<2> dir)
 {
   const FEValuesBase<2> & fe1 = info1.fe_values();
@@ -170,17 +165,17 @@ SNProblem::integrate_face(
 }
 
 void
-SNProblem::solve_direction(unsigned int d)
+Problem::solve_direction()
 {
   SolverControl solver_control(10000, 1e-10);
   SolverRichardson<> solver(solver_control);
   PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
-  preconditioner.initialize(system_matrix, fe.dofs_per_cell);
+  preconditioner.initialize(system_matrix, discretization.get_fe().dofs_per_cell);
   solver.solve(system_matrix, solution, rhs, preconditioner);
 }
 
 void
-SNProblem::solve()
+Problem::solve()
 {
   // Zero scalar flux
   phi = 0;
@@ -191,7 +186,7 @@ SNProblem::solve()
 
     // Assemble and solve
     assemble_direction(d);
-    solve_direction(d);
+    solve_direction();
 
     // Update scalar flux at each node
     phi.add(aq.w(d), solution);
@@ -201,32 +196,11 @@ SNProblem::solve()
 }
 
 void
-SNProblem::output_results() const
+Problem::run()
 {
-  std::cout << phi << std::endl;
-  const std::string filename = "sol.gnuplot";
-  deallog << "Writing solution to <" << filename << ">" << std::endl;
-  std::ofstream gnuplot_output(filename.c_str());
-  DataOut<2> data_out;
-  data_out.attach_dof_handler(dof_handler);
-  data_out.add_data_vector(phi, "phi");
-  data_out.build_patches();
-  data_out.write_gnuplot(gnuplot_output);
-}
+  discretization.setup();
 
-void
-SNProblem::add_material(const unsigned int id, const Material & material)
-{
-  if (materials.find(id) != materials.end())
-    throw ExcMessage("Material id already exists in material map");
-  else
-    materials.emplace(id, material);
-}
-
-void
-SNProblem::run()
-{
-  setup_system();
+  setup();
   solve();
-  output_results();
 }
+} // namespace SNProblem

@@ -6,6 +6,8 @@
 
 #include <math.h>
 
+namespace SNProblem
+{
 class AngularQuadrature
 {
 public:
@@ -23,9 +25,9 @@ public:
     }
   }
 
-  unsigned int n_dir() { return directions.size(); }
-  dealii::Point<2> dir(unsigned int i) { return directions[i]; }
-  double w(unsigned int i) { return weights[i]; }
+  unsigned int n_dir() const { return directions.size(); }
+  dealii::Point<2> dir(unsigned int i) const { return directions[i]; }
+  double w(unsigned int i) const { return weights[i]; }
 
 private:
   // Directions
@@ -34,5 +36,6 @@ private:
   // Weights
   std::vector<double> weights;
 };
+} // namespace SNProblem
 
 #endif /* ANGULARQUADRATURE_H */

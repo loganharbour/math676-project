@@ -1,16 +1,24 @@
-#include "AngularQuadrature.h"
-#include "SNProblem.h"
+#include "description.h"
+#include "discretization.h"
+#include "material.h"
+#include "problem.h"
 
 #include <iostream>
+
+using namespace SNProblem;
 
 int
 main()
 {
   try
   {
-    SNProblem snproblem;
-    snproblem.add_material(0, Material(1.0, 0.0, 1.0));
-    snproblem.run();
+    Description description;
+    description.add_material(0, Material(0.1, 0.0, 1.0));
+
+    Discretization discretization;
+
+    Problem problem(description, discretization);
+    problem.run();
   }
   catch (std::exception & exc)
   {
