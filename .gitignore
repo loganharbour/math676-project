@@ -14,3 +14,11 @@ cmake_install.cmake
 *vtk
 *gnuplot
 /build/
+
+# documents
+*.pdf
+
+# latex
+*.aux
+*.log
+*.synctex.gz
