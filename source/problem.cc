@@ -14,7 +14,6 @@ Problem::Problem(const Description & description, Discretization & discretizatio
   : description(description),
     discretization(discretization),
     dof_handler(discretization.get_dof_handler()),
-    aq(discretization.get_aq()),
     materials(description.get_materials())
 {
 }
@@ -32,9 +31,8 @@ Problem::setup()
 }
 
 void
-Problem::assemble_direction(unsigned int d)
+Problem::assemble_direction(const Point<2> dir)
 {
-  const auto dir = aq.dir(d);
   system_matrix = 0;
   rhs = 0;
 
@@ -64,7 +62,7 @@ Problem::assemble_direction(unsigned int d)
 }
 
 void
-Problem::integrate_cell(DoFInfo & dinfo, CellInfo & info, Point<2> dir)
+Problem::integrate_cell(DoFInfo & dinfo, CellInfo & info, const Point<2> dir)
 {
   const FEValuesBase<2> & fe_v = info.fe_values();
   const unsigned int n_q = fe_v.n_quadrature_points;
@@ -117,13 +115,13 @@ Problem::integrate_cell(DoFInfo & dinfo, CellInfo & info, Point<2> dir)
 }
 
 void
-Problem::integrate_boundary(DoFInfo & /*dinfo*/, CellInfo & /*info*/, Point<2> /*dir*/)
+Problem::integrate_boundary(DoFInfo & /*dinfo*/, CellInfo & /*info*/, const Point<2> /*dir*/)
 {
 }
 
 void
 Problem::integrate_face(
-    DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2, Point<2> dir)
+    DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2, const Point<2> dir)
 {
   const FEValuesBase<2> & fe1 = info1.fe_values();
   const FEValuesBase<2> & fe2 = info2.fe_values();
@@ -180,12 +178,13 @@ Problem::solve()
   // Zero scalar flux
   phi = 0;
 
+  const AngularQuadrature & aq = discretization.get_aq();
   for (unsigned int d = 0; d < aq.n_dir(); ++d)
   {
     std::cout << "Solving direction " << d << std::endl;
 
     // Assemble and solve
-    assemble_direction(d);
+    assemble_direction(aq.dir(d));
     solve_direction();
 
     // Update scalar flux at each node

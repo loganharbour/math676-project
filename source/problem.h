@@ -29,14 +29,13 @@ public:
 private:
   void setup();
 
-  void assemble_direction(unsigned int d);
+  void assemble_direction(const Point<2> dir);
   void solve_direction();
   void solve();
 
   const Description & description;
   Discretization & discretization;
   const DoFHandler<2> & dof_handler;
-  const AngularQuadrature & aq;
   const std::map<const unsigned int, const Material> & materials;
 
   SparseMatrix<double> system_matrix;
@@ -49,10 +48,10 @@ private:
 
   using DoFInfo = MeshWorker::DoFInfo<2>;
   using CellInfo = MeshWorker::IntegrationInfo<2>;
-  void integrate_cell(DoFInfo & dinfo, CellInfo & info, Point<2> dir);
-  void integrate_boundary(DoFInfo & dinfo, CellInfo & info, Point<2> dir);
+  void integrate_cell(DoFInfo & dinfo, CellInfo & info, const Point<2> dir);
+  void integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Point<2> dir);
   void integrate_face(
-      DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2, Point<2> dir);
+      DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2, const Point<2> dir);
 };
 } // namespace SNProblem
 
