@@ -13,12 +13,13 @@ main()
   try
   {
     Description description;
-    description.add_material(0, Material(0.1, 0.0, 1.0));
+    description.add_material(0, Material(1000, 0.0, 1.0));
 
     Discretization discretization;
 
     Problem problem(description, discretization);
     problem.run();
+    problem.output();
   }
   catch (std::exception & exc)
   {

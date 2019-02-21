@@ -28,6 +28,6 @@ Discretization::setup()
   info_box.add_update_flags(update_flags, true, true, true, true);
   info_box.initialize(fe, mapping);
 
-  aq.init(10);
+  aq.init(100);
 }
 } // namespace SNProblem

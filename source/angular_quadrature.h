@@ -19,7 +19,7 @@ public:
     weights.resize(2 * n, dealii::numbers::PI / n);
     for (unsigned int i = 0; i < 2 * n; ++i)
     {
-      double omega = (dealii::numbers::PI_2 + i) / n;
+      double omega = dealii::numbers::PI * (i + 0.5) / n;
       directions[i][0] = std::cos(omega);
       directions[i][1] = std::sin(omega);
     }

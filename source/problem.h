@@ -25,6 +25,7 @@ public:
   Problem(const Description & description, Discretization & discretization);
 
   void run();
+  void output();
 
 private:
   void setup();
@@ -40,8 +41,8 @@ private:
 
   SparseMatrix<double> system_matrix;
   Vector<double> rhs;
-  Vector<double> phi_old;
-  Vector<double> phi;
+  Vector<double> scalar_flux_old;
+  Vector<double> scalar_flux;
   Vector<double> solution;
 
   MeshWorker::Assembler::SystemSimple<SparseMatrix<double>, Vector<double>> assembler;

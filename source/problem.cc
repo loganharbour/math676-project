@@ -5,6 +5,9 @@
 
 #include <deal.II/lac/precondition_block.h>
 #include <deal.II/lac/solver_richardson.h>
+#include <deal.II/numerics/data_out.h>
+
+#include <fstream>
 
 namespace SNProblem
 {
@@ -21,8 +24,8 @@ Problem::Problem(const Description & description, Discretization & discretizatio
 void
 Problem::setup()
 {
-  phi.reinit(dof_handler.n_dofs());
-  phi_old.reinit(dof_handler.n_dofs());
+  scalar_flux.reinit(dof_handler.n_dofs());
+  scalar_flux_old.reinit(dof_handler.n_dofs());
   rhs.reinit(dof_handler.n_dofs());
   solution.reinit(dof_handler.n_dofs());
   system_matrix.reinit(discretization.get_sparsity_pattern());
@@ -66,7 +69,7 @@ Problem::integrate_cell(DoFInfo & dinfo, CellInfo & info, const Point<2> dir)
 {
   const FEValuesBase<2> & fe_v = info.fe_values();
   const unsigned int n_q = fe_v.n_quadrature_points;
-  const unsigned int n_dofs = fe_v.dofs_per_cell;
+  const unsigned int n_dof = fe_v.dofs_per_cell;
 
   FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
   Vector<double> & local_vector = dinfo.vector(0).block(0);
@@ -80,36 +83,37 @@ Problem::integrate_cell(DoFInfo & dinfo, CellInfo & info, const Point<2> dir)
   const bool has_scattering = material.sigma_s != 0;
 
   // Obtain the old scalar flux if scattering exists in this cell
-  std::vector<double> local_phi_old;
+  std::vector<double> local_scalar_flux_old;
   if (has_scattering)
   {
-    local_phi_old.resize(n_dofs);
-    for (unsigned int i = 0; i < n_dofs; ++i)
-      local_phi_old[i] = phi_old[dinfo.indices[i]];
+    local_scalar_flux_old.resize(n_dof);
+    for (unsigned int i = 0; i < n_dof; ++i)
+      local_scalar_flux_old[i] = scalar_flux_old[dinfo.indices[i]];
   }
 
   for (unsigned int q = 0; q < n_q; ++q)
   {
-    for (unsigned int i = 0; i < n_dofs; ++i)
+    for (unsigned int i = 0; i < n_dof; ++i)
     {
-      const double u_i = fe_v.shape_value(i, q);
-      double phi_old_q = 0;
-      for (unsigned int j = 0; j < n_dofs; ++j)
+      const double test_i = fe_v.shape_value(i, q);
+      const double dir_dot_grad_test_i = dir * fe_v.shape_grad(i, q);
+      double scalar_flux_old_q = 0;
+      for (unsigned int j = 0; j < n_dof; ++j)
       {
-        const double v_j = fe_v.shape_value(j, q);
-        // Streaming term
-        local_matrix(i, j) -= v_j * dir * fe_v.shape_grad(i, q) * JxW[q];
-        // Loss term
-        local_matrix(i, j) += u_i * v_j * material.sigma_t * JxW[q];
-        // Accumulate scalar flux at this qp
+        const double phi_j = fe_v.shape_value(j, q);
+        // Streaming
+        local_matrix(i, j) -= dir_dot_grad_test_i * phi_j * JxW[q];
+        // Collision
+        local_matrix(i, j) += material.sigma_t * test_i * phi_j * JxW[q];
+        // Accumulate scalar flux for scattering source at this qp
         if (has_scattering)
-          phi_old_q += local_phi_old[j] * v_j;
+          scalar_flux_old_q += scalar_flux_old[j] * test_i * JxW[q];
       }
-      // Source gain term
-      local_vector(i) += u_i * material.src * JxW[q];
+      // External source
+      local_vector(i) += test_i * material.src * JxW[q];
       // Scattering gain term
       if (has_scattering)
-        local_vector(i) += u_i * material.sigma_s * phi_old_q * JxW[q];
+        local_vector(i) += test_i * material.sigma_s * scalar_flux_old_q * JxW[q];
     }
   }
 }
@@ -128,36 +132,40 @@ Problem::integrate_face(
   const std::vector<double> & JxW = fe1.get_JxW_values();
 
   // Dot product between the direction and the outgoing normal of face 1
-  const double dot = dir * fe1.normal_vector(0);
+  const double dot1 = dir * fe1.normal_vector(0);
 
   // Cell 1 is outgoing
-  if (dot > 0)
+  if (dot1 > 0)
   {
-    FullMatrix<double> & u1_v1_matrix = dinfo1.matrix(0, false).matrix;
-    FullMatrix<double> & u1_v2_matrix = dinfo2.matrix(0, true).matrix;
+    FullMatrix<double> & phi1_test1_matrix = dinfo1.matrix(0, false).matrix;
+    FullMatrix<double> & phi1_test2_matrix = dinfo2.matrix(0, true).matrix;
     for (unsigned int q = 0; q < fe1.n_quadrature_points; ++q)
-      for (unsigned int i = 0; i < fe1.dofs_per_cell; ++i)
+      for (unsigned int j = 0; j < fe1.dofs_per_cell; ++j)
       {
-        const double u1_i = fe1.shape_value(i, q);
-        for (unsigned int j = 0; j < fe1.dofs_per_cell; ++j)
-          u1_v1_matrix(i, j) += dot * u1_i * fe1.shape_value(j, q) * JxW[q];
-        for (unsigned int l = 0; l < fe2.dofs_per_cell; ++l)
-          u1_v2_matrix(i, l) -= dot * u1_i * fe2.shape_value(l, q) * JxW[q];
+        const auto phi1_j = fe1.shape_value(j, q);
+        // Cell 1 outgoing contribution
+        for (unsigned int i = 0; i < fe1.dofs_per_cell; ++i)
+          phi1_test1_matrix(i, j) += dot1 * phi1_j * fe1.shape_value(i, q) * JxW[q];
+        // Cell 2 incoming contribution
+        for (unsigned int k = 0; k < fe2.dofs_per_cell; ++k)
+          phi1_test2_matrix(k, j) -= dot1 * phi1_j * fe2.shape_value(k, q) * JxW[q];
       }
   }
   // Cell 2 is outgoing
-  else if (dot < 0)
+  else if (dot1 < 0)
   {
-    FullMatrix<double> & u2_v1_matrix = dinfo1.matrix(0, true).matrix;
-    FullMatrix<double> & u2_v2_matrix = dinfo2.matrix(0, false).matrix;
+    FullMatrix<double> & phi2_test2_matrix = dinfo2.matrix(0, false).matrix;
+    FullMatrix<double> & phi2_test1_matrix = dinfo1.matrix(0, true).matrix;
     for (unsigned int q = 0; q < fe1.n_quadrature_points; ++q)
-      for (unsigned int k = 0; k < fe2.dofs_per_cell; ++k)
+      for (unsigned int l = 0; l < fe2.dofs_per_cell; ++l)
       {
-        const double u2_k = fe2.shape_value(k, q);
-        for (unsigned int j = 0; j < fe1.dofs_per_cell; ++j)
-          u2_v1_matrix(k, j) += dot * u2_k * fe1.shape_value(j, q) * JxW[q];
-        for (unsigned int l = 0; l < fe2.dofs_per_cell; ++l)
-          u2_v2_matrix(k, l) -= dot * u2_k * fe2.shape_value(l, q) * JxW[q];
+        const auto phi2_l = fe2.shape_value(l, q);
+        // Cell 2 outgoing contribution
+        for (unsigned int k = 0; k < fe2.dofs_per_cell; ++k)
+          phi2_test2_matrix(k, l) -= dot1 * phi2_l * fe2.shape_value(k, q) * JxW[q];
+        // Cell 1 incoming contribution
+        for (unsigned int i = 0; i < fe1.dofs_per_cell; ++i)
+          phi2_test1_matrix(i, l) += dot1 * phi2_l * fe1.shape_value(i, q) * JxW[q];
       }
   }
 }
@@ -165,33 +173,34 @@ Problem::integrate_face(
 void
 Problem::solve_direction()
 {
-  SolverControl solver_control(10000, 1e-10);
+  SolverControl solver_control(1000, 1e-12);
   SolverRichardson<> solver(solver_control);
   PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
   preconditioner.initialize(system_matrix, discretization.get_fe().dofs_per_cell);
   solver.solve(system_matrix, solution, rhs, preconditioner);
+  std::cout << " converged after " << solver_control.last_step() << " iterations " << std::endl;
 }
 
 void
 Problem::solve()
 {
-  // Zero scalar flux
-  phi = 0;
+  // Zero scalar flux for update
+  scalar_flux = 0;
 
   const AngularQuadrature & aq = discretization.get_aq();
   for (unsigned int d = 0; d < aq.n_dir(); ++d)
   {
-    std::cout << "Solving direction " << d << std::endl;
+    std::cout << "Solving direction " << d << "...";
 
     // Assemble and solve
     assemble_direction(aq.dir(d));
     solve_direction();
 
-    // Update scalar flux at each node
-    phi.add(aq.w(d), solution);
+    // Update scalar flux at each node (weighed by angular weight)
+    scalar_flux.add(aq.w(d), solution);
   }
 
-  phi_old = phi;
+  scalar_flux_old = scalar_flux;
 }
 
 void
@@ -201,5 +210,17 @@ Problem::run()
 
   setup();
   solve();
+}
+
+void
+Problem::output()
+{
+  std::ofstream output("solution.vtu");
+  DataOut<2> data_out;
+  data_out.attach_dof_handler(dof_handler);
+  data_out.add_data_vector(scalar_flux, "scalar_flux");
+  data_out.add_data_vector(solution, "solution");
+  data_out.build_patches(5);
+  data_out.write_vtu(output);
 }
 } // namespace SNProblem
