@@ -22,7 +22,7 @@ class Material;
 class Problem
 {
 public:
-  Problem(const Description & description, Discretization & discretization);
+  Problem();
 
   void run();
   void output();
@@ -34,8 +34,9 @@ private:
   void solve_direction();
   void solve();
 
-  const Description & description;
-  Discretization & discretization;
+  Description description;
+  Discretization discretization;
+
   const DoFHandler<2> & dof_handler;
   const std::map<const unsigned int, const Material> & materials;
 

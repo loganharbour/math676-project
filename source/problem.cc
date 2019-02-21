@@ -13,10 +13,8 @@ namespace SNProblem
 {
 using namespace dealii;
 
-Problem::Problem(const Description & description, Discretization & discretization)
-  : description(description),
-    discretization(discretization),
-    dof_handler(discretization.get_dof_handler()),
+Problem::Problem()
+  : dof_handler(discretization.get_dof_handler()),
     materials(description.get_materials())
 {
 }
@@ -206,9 +204,10 @@ Problem::solve()
 void
 Problem::run()
 {
+  description.setup();
   discretization.setup();
-
   setup();
+
   solve();
 }
 
@@ -220,7 +219,7 @@ Problem::output()
   data_out.attach_dof_handler(dof_handler);
   data_out.add_data_vector(scalar_flux, "scalar_flux");
   data_out.add_data_vector(solution, "solution");
-  data_out.build_patches(5);
+  data_out.build_patches();
   data_out.write_vtu(output);
 }
 } // namespace SNProblem

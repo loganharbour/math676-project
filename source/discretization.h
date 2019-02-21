@@ -3,6 +3,7 @@
 
 #include "angular_quadrature.h"
 
+#include <deal.II/base/parameter_acceptor.h>
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/fe/fe_dgq.h>
 #include <deal.II/fe/mapping_q1.h>
@@ -14,7 +15,7 @@ namespace SNProblem
 {
 using namespace dealii;
 
-class Discretization
+class Discretization : public ParameterAcceptor
 {
 public:
   Discretization();
@@ -30,14 +31,18 @@ public:
 
 private:
   Triangulation<2> triangulation;
-
   const MappingQ1<2> mapping;
   FE_DGQ<2> fe;
   DoFHandler<2> dof_handler;
-
   SparsityPattern sparsity_pattern;
 
+  // The angular quadrature object
   AngularQuadrature aq;
+
+  // Angular quadrature order
+  unsigned int aq_order;
+  // Mesh uniform refinements
+  unsigned int uniform_refinement;
 };
 } // namespace SNProblem
 

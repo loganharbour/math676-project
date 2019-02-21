@@ -3,21 +3,25 @@
 #include "material.h"
 #include "problem.h"
 
+#include <deal.II/base/parameter_acceptor.h>
 #include <iostream>
 
 using namespace SNProblem;
 
 int
-main()
+main(int argc, char **argv)
 {
   try
   {
-    Description description;
-    description.add_material(0, Material(1000, 0.0, 1.0));
+    Problem problem;
 
-    Discretization discretization;
+    std::string parameter_file;
+    if (argc > 1)
+      parameter_file = argv[1];
+    else
+      parameter_file = "input.prm";
+    ParameterAcceptor::initialize(parameter_file);
 
-    Problem problem(description, discretization);
     problem.run();
     problem.output();
   }
