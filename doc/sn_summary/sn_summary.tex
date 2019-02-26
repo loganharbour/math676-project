@@ -1,0 +1,84 @@
+\documentclass{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{color,soul}
+\usepackage{mathtools}
+\usepackage{physics}
+\usepackage{titlesec}
+
+\setlength\parindent{0pt} % No indents
+\setlength{\parskip}{1em} % Paragraph skip
+
+% Section formatting and spacing
+\titleformat{\section}{\normalfont\bfseries}{}{}{}
+\titlespacing*{\section}{0pt}{0.8ex}{0.2ex}
+
+\newcommand{\vx}{\mathbf{x}} % x vector
+\newcommand{\vo}{\mathbf{\Omega}} % omega vector
+\newcommand{\vn}{\mathbf{n}} % normal vector
+\newcommand{\spatial}{\mathcal{D}} % spatial domain representation
+\newcommand{\boundary}{\delta \mathcal{D}} % boundary representation
+\newcommand{\angular}{\mathcal{S}} % angular domain representation
+
+\newcommand{\pageTitle}{MATH 676 Project S$_N$ Summary}
+\newcommand{\pageAuthor}{Logan Harbour}
+
+\begin{document}
+	
+\title{\MakeUppercase{\normalsize \textbf{\pageTitle}} \vspace{-0.6cm}}
+\author{\MakeUppercase{\small \pageAuthor}}
+\date{\vspace{-1.2cm}}
+
+\maketitle
+
+\section*{Problem definition}
+
+Begin with the spatial domain $\spatial \in \mathbb{R}^2$ in which $\boundary$ is on the boundary of $\spatial$. The set of propagation directions $\angular$ is the unit disk.
+
+The linear Boltzmann equation for one-group transport is
+\begin{subequations}
+	\label{eq:boltzmann}
+	\begin{equation}
+		\vo \cdot \nabla \Psi(\vo, \vx) + \sigma_t(\vx) \Psi(\vo, \vx) - \sigma_s(\vx) \Phi(\vx) = q(\vx)\,, \qquad \forall (\vo, \vx) \in \angular \times \spatial\,,
+	\end{equation}
+	\begin{equation}
+		\Phi(\vo, \vx) = \Phi^\text{inc} (\vo, \vx)\,, \qquad \forall(\vo, \vx) \in \angular \times \boundary\,,~ \vo \cdot \vn(\vx) < 0\,,
+	\end{equation}
+\end{subequations}
+where $\Phi$ is the scalar flux, defined by
+\[
+	\Phi = \frac{1}{2\pi} \int_{\angular} \Phi(\vo, \vx) d\Omega\,.
+\]
+
+\section*{S$_N$ discretization}
+
+Introduce the S$_N$ discretization, which replaces the angular flux with a discrete angular flux, as
+\begin{equation}
+	\label{eq:sn_discretization}
+	\psi(\vx) = [\psi_1(\vx), \psi_2(\vx), \ldots \psi_{N_\Omega}(\vx)]^T\,.
+\end{equation}
+We then introduce the quadrature rule $\{ (\vo_d, \omega_d), d = 1, \ldots, N_\Omega\}$ where $\sum_d \omega_d = 2 \pi$. With said quadrature rule, we have 
+\[
+	\int_\angular f(\vo, \vx) d\Omega \approx \sum_{d = 1}^{N_\Omega} w_d f(\vo_d, \vx)\,.
+\]
+This discretization allows us to write the system in Equation \eqref{eq:boltzmann} as
+\begin{subequations}
+	\label{sn_equations}
+	\begin{equation}
+		\vo_d \cdot \nabla + \sigma_t(\vx) \phi_d(\vo, \vx) - \sigma_s(\vx) \phi(\vx) = q(\vx)\,, \qquad \forall \vx \in \spatial
+	\end{equation}
+	\begin{equation}
+		\psi_d(\vx) = \Psi^\text{inc}_j (\vx)\,, \qquad \forall \vx \in \boundary\,,~ \vo_d \cdot \vn(\vx) < 0\,, 
+	\end{equation}
+\end{subequations}
+where the discrete scalar flux, $\phi$, is
+\[
+	\phi(\vx) = \frac{1}{2\pi} \sum_{d = 1}^{N_\Omega} w_j \psi_j(\vx)\,.
+\]
+
+\section*{Discontinuous Galerkin discretization}
+
+\end{document}
