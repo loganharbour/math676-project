@@ -9,9 +9,13 @@ Makefile
 CmakeCache.txt
 cmake_install.cmake
 
+# inputs
+*.prm
+
 # outputs
 *eps
 *vtk
+*vtu
 *gnuplot
 /build/
 
@@ -22,3 +26,6 @@ cmake_install.cmake
 *.aux
 *.log
 *.synctex.gz
+
+# executable
+project
