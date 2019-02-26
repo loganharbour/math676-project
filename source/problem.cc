@@ -141,16 +141,13 @@ Problem::integrate_face(
   // Reverse the direction for the dot product if cell 2 is the outgoing cell
   const double dir_dot_nout = (cell1_out ? dir_dot_n1 : -dir_dot_n1);
 
-  // Integrate as necessary
   const std::vector<double> & JxW = info1.fe_values().get_JxW_values();
   for (unsigned int q = 0; q < fe_out.n_quadrature_points; ++q)
     for (unsigned int j = 0; j < fe_out.dofs_per_cell; ++j)
     {
       const auto uout_j = fe_out.shape_value(j, q);
-      // Outgoing contribution
       for (unsigned int i = 0; i < fe_out.dofs_per_cell; ++i)
         uout_vout_matrix(i, j) += dir_dot_nout * uout_j * fe_out.shape_value(i, q) * JxW[q];
-      // Incoming contribution
       for (unsigned int i = 0; i < fe_in.dofs_per_cell; ++i)
         uout_vin_matrix(i, j) -= dir_dot_nout * uout_j * fe_in.shape_value(i, q) * JxW[q];
     }
