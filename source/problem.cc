@@ -14,8 +14,7 @@ namespace SNProblem
 using namespace dealii;
 
 Problem::Problem()
-  : dof_handler(discretization.get_dof_handler()),
-    materials(description.get_materials())
+  : dof_handler(discretization.get_dof_handler()), materials(description.get_materials())
 {
 }
 
@@ -93,25 +92,23 @@ Problem::integrate_cell(DoFInfo & dinfo, CellInfo & info, const Point<2> dir)
   {
     for (unsigned int i = 0; i < n_dof; ++i)
     {
-      const double test_i = fe_v.shape_value(i, q);
-      const double dir_dot_grad_test_i = dir * fe_v.shape_grad(i, q);
+      const double v_i = fe_v.shape_value(i, q);
+      const double dir_dot_grad_v_i = dir * fe_v.shape_grad(i, q);
       double scalar_flux_old_q = 0;
       for (unsigned int j = 0; j < n_dof; ++j)
       {
-        const double phi_j = fe_v.shape_value(j, q);
-        // Streaming
-        local_matrix(i, j) -= dir_dot_grad_test_i * phi_j * JxW[q];
-        // Collision
-        local_matrix(i, j) += material.sigma_t * test_i * phi_j * JxW[q];
+        const double u_j = fe_v.shape_value(j, q);
+        // Streaming + collision
+        local_matrix(i, j) += (u_j * JxW[q]) * (material.sigma_t * v_i - dir_dot_grad_v_i);
         // Accumulate scalar flux for scattering source at this qp
         if (has_scattering)
-          scalar_flux_old_q += scalar_flux_old[j] * test_i * JxW[q];
+          scalar_flux_old_q += scalar_flux_old[j] * v_i * JxW[q];
       }
       // External source
-      local_vector(i) += test_i * material.src * JxW[q];
+      local_vector(i) += v_i * material.src * JxW[q];
       // Scattering gain term
       if (has_scattering)
-        local_vector(i) += test_i * material.sigma_s * scalar_flux_old_q * JxW[q];
+        local_vector(i) += v_i * material.sigma_s * scalar_flux_old_q * JxW[q];
     }
   }
 }
@@ -125,46 +122,39 @@ void
 Problem::integrate_face(
     DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2, const Point<2> dir)
 {
-  const FEValuesBase<2> & fe1 = info1.fe_values();
-  const FEValuesBase<2> & fe2 = info2.fe_values();
-  const std::vector<double> & JxW = fe1.get_JxW_values();
-
   // Dot product between the direction and the outgoing normal of face 1
-  const double dot1 = dir * fe1.normal_vector(0);
+  const double dir_dot_n1 = dir * info1.fe_values().normal_vector(0);
 
-  // Cell 1 is outgoing
-  if (dot1 > 0)
+  // Whether the first cell is the outgoing cell or not
+  const bool cell1_out = dir_dot_n1 > 0;
+
+  // FE values for the outgoing and incoming cell
+  const FEValuesBase<2> & fe_out = (cell1_out ? info1.fe_values() : info2.fe_values());
+  const FEValuesBase<2> & fe_in = (cell1_out ? info2.fe_values() : info1.fe_values());
+
+  // System matrices for the u_out v_out matrix and the u_out v_in matrix
+  DoFInfo & dinfo_out = (cell1_out ? dinfo1 : dinfo2);
+  DoFInfo & dinfo_in = (cell1_out ? dinfo2 : dinfo1);
+  FullMatrix<double> & uout_vout_matrix = dinfo_out.matrix(0, false).matrix;
+  FullMatrix<double> & uout_vin_matrix = dinfo_in.matrix(0, true).matrix;
+
+  // Reverse the direction for the dot product if cell 2 is the outgoing cell
+  const double dir_dot_nout = (cell1_out ? dir_dot_n1 : -dir_dot_n1);
+
+  // Integrate as necessary
+  const std::vector<double> & JxW = info1.fe_values().get_JxW_values();
+  for (unsigned int q = 0; q < fe_out.n_quadrature_points; ++q)
   {
-    FullMatrix<double> & phi1_test1_matrix = dinfo1.matrix(0, false).matrix;
-    FullMatrix<double> & phi1_test2_matrix = dinfo2.matrix(0, true).matrix;
-    for (unsigned int q = 0; q < fe1.n_quadrature_points; ++q)
-      for (unsigned int j = 0; j < fe1.dofs_per_cell; ++j)
-      {
-        const auto phi1_j = fe1.shape_value(j, q);
-        // Cell 1 outgoing contribution
-        for (unsigned int i = 0; i < fe1.dofs_per_cell; ++i)
-          phi1_test1_matrix(i, j) += dot1 * phi1_j * fe1.shape_value(i, q) * JxW[q];
-        // Cell 2 incoming contribution
-        for (unsigned int k = 0; k < fe2.dofs_per_cell; ++k)
-          phi1_test2_matrix(k, j) -= dot1 * phi1_j * fe2.shape_value(k, q) * JxW[q];
-      }
-  }
-  // Cell 2 is outgoing
-  else if (dot1 < 0)
-  {
-    FullMatrix<double> & phi2_test2_matrix = dinfo2.matrix(0, false).matrix;
-    FullMatrix<double> & phi2_test1_matrix = dinfo1.matrix(0, true).matrix;
-    for (unsigned int q = 0; q < fe1.n_quadrature_points; ++q)
-      for (unsigned int l = 0; l < fe2.dofs_per_cell; ++l)
-      {
-        const auto phi2_l = fe2.shape_value(l, q);
-        // Cell 2 outgoing contribution
-        for (unsigned int k = 0; k < fe2.dofs_per_cell; ++k)
-          phi2_test2_matrix(k, l) -= dot1 * phi2_l * fe2.shape_value(k, q) * JxW[q];
-        // Cell 1 incoming contribution
-        for (unsigned int i = 0; i < fe1.dofs_per_cell; ++i)
-          phi2_test1_matrix(i, l) += dot1 * phi2_l * fe1.shape_value(i, q) * JxW[q];
-      }
+    for (unsigned int j = 0; j < fe_out.dofs_per_cell; ++j)
+    {
+      const auto uout_j = fe_out.shape_value(j, q);
+      // Outgoing contribution
+      for (unsigned int i = 0; i < fe_out.dofs_per_cell; ++i)
+        uout_vout_matrix(i, j) += dir_dot_nout * uout_j * fe_out.shape_value(i, q) * JxW[q];
+      // Incoming contribution
+      for (unsigned int i = 0; i < fe_in.dofs_per_cell; ++i)
+        uout_vin_matrix(i, j) -= dir_dot_nout * uout_j * fe_in.shape_value(i, q) * JxW[q];
+    }
   }
 }
 
