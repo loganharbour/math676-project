@@ -13,8 +13,13 @@
 \setlength{\parskip}{1em} % Paragraph skip
 
 % Section formatting and spacing
-\titleformat{\section}{\normalfont\bfseries}{}{}{}
-\titlespacing*{\section}{0pt}{0.8ex}{0.2ex}
+\titleformat{\section}{\normalfont\bfseries}{\thesection}{1em}{}
+\titlespacing{\section}{0pt}{0.8ex}{0.2ex}
+\titleformat{\subsection}{\normalfont\itshape}{\thesubsection}{1em}{}
+\titlespacing{\subsection}{0pt}{0.8ex}{0.2ex}
+
+% Equation numbering by section
+\numberwithin{equation}{section}
 
 \newcommand{\vx}{\mathbf{x}} % x vector
 \newcommand{\vo}{\mathbf{\Omega}} % omega vector
@@ -23,7 +28,10 @@
 \newcommand{\boundary}{\delta \mathcal{D}} % boundary representation
 \newcommand{\angular}{\mathcal{S}} % angular domain representation
 
-\newcommand{\pageTitle}{MATH 676 Project S$_N$ Summary}
+\DeclarePairedDelimiterX{\ainp}[2]{\langle}{\rangle}{#1, #2}
+\newcommand{\pinp}[2]{\left(#1,#2\right)}
+
+\newcommand{\pageTitle}{MATH 676 Project: S$_N$ Summary}
 \newcommand{\pageAuthor}{Logan Harbour}
 
 \begin{document}
@@ -34,7 +42,7 @@
 
 \maketitle
 
-\section*{Problem definition}
+\section{Problem definition}
 
 Begin with the spatial domain $\spatial \in \mathbb{R}^2$ in which $\boundary$ is on the boundary of $\spatial$. The set of propagation directions $\angular$ is the unit disk.
 
@@ -53,7 +61,7 @@ where $\Phi$ is the scalar flux, defined by
 	\Phi = \frac{1}{2\pi} \int_{\angular} \Phi(\vo, \vx) d\Omega\,.
 \]
 
-\section*{S$_N$ discretization}
+\section{S$_N$ discretization}
 
 Introduce the S$_N$ discretization, which replaces the angular flux with a discrete angular flux, as
 \begin{equation}
@@ -66,11 +74,13 @@ We then introduce the quadrature rule $\{ (\vo_d, \omega_d), d = 1, \ldots, N_\O
 \]
 This discretization allows us to write the system in Equation \eqref{eq:boltzmann} as
 \begin{subequations}
-	\label{sn_equations}
+	\label{eq:sn_equations}
 	\begin{equation}
-		\vo_d \cdot \nabla + \sigma_t(\vx) \phi_d(\vo, \vx) - \sigma_s(\vx) \phi(\vx) = q(\vx)\,, \qquad \forall \vx \in \spatial
+		\label{eq:sn_equations_domain}
+		\vo_d \cdot \nabla \psi_d(\vx) + \sigma_t(\vx) \psi_d(\vx) - \sigma_s(\vx) \phi(\vx) = q(\vx)\,, \qquad \forall \vx \in \spatial
 	\end{equation}
 	\begin{equation}
+		\label{eq:sn_equations_boundary}
 		\psi_d(\vx) = \Psi^\text{inc}_j (\vx)\,, \qquad \forall \vx \in \boundary\,,~ \vo_d \cdot \vn(\vx) < 0\,, 
 	\end{equation}
 \end{subequations}
@@ -79,6 +89,35 @@ where the discrete scalar flux, $\phi$, is
 	\phi(\vx) = \frac{1}{2\pi} \sum_{d = 1}^{N_\Omega} w_j \psi_j(\vx)\,.
 \]
 
-\section*{Discontinuous Galerkin discretization}
+\section{Discontinuous Galerkin discretization}
+
+Define $\mathbb{T}_h$ as the set of all active cells of the triangulation for $\spatial$ and $\mathbb{F}_h$ as the set of all active interior faces. Define a discontinuous approximation space for the scalar flux based on the mesh $\mathbb{T}_h$ as
+\begin{equation}
+	V_h \in \{ v \in L^2(\spatial)~|~\forall K \in \mathbb{T}_h\,, v|_K \in P_K\}\,,
+\end{equation}
+where the finite-dimensional space $P_K$ is assumed to contain $\mathbb{P}_k$, the set of polynomials of degree at most $k$. The discrete space for the angular flux consists of copies of $V_h$ for each of the discrete ordinates, as
+\begin{equation}
+	W_h = \left(V_h\right)^{N_\Omega}\,.
+\end{equation}
+
+Multiply Equation \eqref{eq:sn_equations_boundary} by the test function $v_d \in V_h$ and integrate as
+\begin{equation}
+	\label{eq:fem_integrate}
+	\sum_{K \in \mathbb{T}_h} \left[ \pinp{\vo_d \cdot \nabla \psi_d}{v_d}_K + \pinp{\sigma_t \psi_d}{v_d}_K - \pinp{\sigma_s \phi}{v_d}_K = \pinp{q}{v_d}_K\right]\,,
+\end{equation}
+and integrate the first term by parts to obtain
+\begin{equation}
+	\label{eq:fem_parts}
+	\sum_{K \in \mathbb{T}_h} \left[ \pinp{-\vo_d \cdot \nabla v_d}{\psi_d}_K + \pinp{\psi_d \vo_d \cdot \vn}{v_d}_{\delta K} + \pinp{\sigma_t \psi_d}{v_d}_K - \pinp{\sigma_s \phi}{v_d}_K = \pinp{q}{v_d}_K\right]\,,
+\end{equation}
+where $\vn$ is the outward normal. Note that the surface integration in Equation \eqref{eq:fem_parts} is double-valued due to the discontinuous approximation. We introduce the upwind approximation
+\begin{equation}
+	\psi_d \vo_d \cdot \vn = \psi^+_d \vo_d \cdot \vn\,,
+\end{equation}
+where $\psi_d^+$ is the upwind value of $\psi_d$, that is, the value from the side of the face in which $\vo \cdot \vn \geq 0$. The weak form is then defined as
+\begin{equation}
+	\label{eq:fem_upwind}
+	\sum_{K \in \mathbb{T}_h} \left[ \pinp{-\vo_d \cdot \nabla v_d}{\psi_d}_K + \pinp{\psi_d^+ \vo_d \cdot \vn}{v_d}_{\delta K} + \pinp{\sigma_t \psi_d}{v_d}_K - \pinp{\sigma_s \phi}{v_d}_K = \pinp{q}{v_d}_K\right]\,.
+\end{equation}
 
 \end{document}
