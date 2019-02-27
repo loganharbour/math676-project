@@ -128,28 +128,28 @@ Problem::integrate_face(
   // Whether the first cell is the outgoing cell or not
   const bool cell1_out = dir_dot_n1 > 0;
 
-  // FE values for the outgoing and incoming cell
-  const FEValuesBase<2> & fe_out = (cell1_out ? info1.fe_values() : info2.fe_values());
-  const FEValuesBase<2> & fe_in = (cell1_out ? info2.fe_values() : info1.fe_values());
+  // FE values access for the outgoing and incoming cell
+  const auto & fe_v_out = (cell1_out ? info1.fe_values() : info2.fe_values());
+  const auto & fe_v_in = (cell1_out ? info2.fe_values() : info1.fe_values());
 
   // System matrices for the u_out v_out matrix and the u_out v_in matrix
   DoFInfo & dinfo_out = (cell1_out ? dinfo1 : dinfo2);
   DoFInfo & dinfo_in = (cell1_out ? dinfo2 : dinfo1);
-  FullMatrix<double> & uout_vout_matrix = dinfo_out.matrix(0, false).matrix;
-  FullMatrix<double> & uout_vin_matrix = dinfo_in.matrix(0, true).matrix;
+  auto & uout_vout_matrix = dinfo_out.matrix(0, false).matrix;
+  auto & uout_vin_matrix = dinfo_in.matrix(0, true).matrix;
 
   // Reverse the direction for the dot product if cell 2 is the outgoing cell
   const double dir_dot_nout = (cell1_out ? dir_dot_n1 : -dir_dot_n1);
 
-  const std::vector<double> & JxW = info1.fe_values().get_JxW_values();
-  for (unsigned int q = 0; q < fe_out.n_quadrature_points; ++q)
-    for (unsigned int j = 0; j < fe_out.dofs_per_cell; ++j)
+  const auto & JxW = info1.fe_values().get_JxW_values();
+  for (unsigned int q = 0; q < fe_v_out.n_quadrature_points; ++q)
+    for (unsigned int j = 0; j < fe_v_out.dofs_per_cell; ++j)
     {
-      const auto uout_j = fe_out.shape_value(j, q);
-      for (unsigned int i = 0; i < fe_out.dofs_per_cell; ++i)
-        uout_vout_matrix(i, j) += dir_dot_nout * uout_j * fe_out.shape_value(i, q) * JxW[q];
-      for (unsigned int i = 0; i < fe_in.dofs_per_cell; ++i)
-        uout_vin_matrix(i, j) -= dir_dot_nout * uout_j * fe_in.shape_value(i, q) * JxW[q];
+      const double coeff = dir_dot_nout * fe_v_out.shape_value(j, q) * JxW[q];
+      for (unsigned int i = 0; i < fe_v_out.dofs_per_cell; ++i)
+        uout_vout_matrix(i, j) += coeff * fe_v_out.shape_value(i, q);
+      for (unsigned int i = 0; i < fe_v_in.dofs_per_cell; ++i)
+        uout_vin_matrix(i, j) -= coeff * fe_v_in.shape_value(i, q);
     }
 }
 
