@@ -40,11 +40,17 @@ private:
   const DoFHandler<2> & dof_handler;
   const std::map<const unsigned int, const Material> & materials;
 
-  SparseMatrix<double> system_matrix;
-  Vector<double> rhs;
-  Vector<double> scalar_flux_old;
+  /// System matrix used in solving a single direction
+  SparseMatrix<double> direction_matrix;
+  /// System right hand side used in solving a single direction
+  Vector<double> direction_rhs;
+  /// System solution used in solving a single direction
+  Vector<double> direction_solution;
+
+  /// Finite element representation of the scalar flux at the current iteration
   Vector<double> scalar_flux;
-  Vector<double> solution;
+  /// Finite element representation of the scalar flux at the previous iteration
+  Vector<double> scalar_flux_old;
 
   MeshWorker::Assembler::SystemSimple<SparseMatrix<double>, Vector<double>> assembler;
 

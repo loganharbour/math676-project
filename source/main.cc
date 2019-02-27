@@ -9,19 +9,24 @@
 using namespace SNProblem;
 
 int
-main(int argc, char **argv)
+main(int argc, char ** argv)
 {
   try
   {
+    // Initialize problem
     Problem problem;
 
+    // Load the parameter file
     std::string parameter_file;
+    // If a file is given via command-line argument, use it
     if (argc > 1)
       parameter_file = argv[1];
+    // If not, use the default
     else
       parameter_file = "input.prm";
     ParameterAcceptor::initialize(parameter_file);
 
+    // Run the problem and grab output
     problem.run();
     problem.output();
   }

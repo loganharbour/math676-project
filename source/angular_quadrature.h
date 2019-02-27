@@ -16,7 +16,7 @@ public:
   void init(unsigned int n)
   {
     directions.resize(2 * n);
-    weights.resize(2 * n, dealii::numbers::PI / n);
+    weights.resize(2 * n, 1.0 / (2 * n));
     for (unsigned int i = 0; i < 2 * n; ++i)
     {
       double omega = dealii::numbers::PI * (i + 0.5) / n;
@@ -30,10 +30,10 @@ public:
   double w(unsigned int i) const { return weights[i]; }
 
 private:
-  // Directions
+  /// Quadrature directions
   std::vector<dealii::Point<2>> directions;
 
-  // Weights
+  /// Quadrature weights
   std::vector<double> weights;
 };
 } // namespace SNProblem

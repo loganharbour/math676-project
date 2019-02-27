@@ -21,20 +21,25 @@ Problem::Problem()
 void
 Problem::setup()
 {
+  // Initialize system storage for a single direction
+  direction_rhs.reinit(dof_handler.n_dofs());
+  direction_matrix.reinit(discretization.get_sparsity_pattern());
+
+  // Resize system variables
+  direction_solution.reinit(dof_handler.n_dofs());
   scalar_flux.reinit(dof_handler.n_dofs());
   scalar_flux_old.reinit(dof_handler.n_dofs());
-  rhs.reinit(dof_handler.n_dofs());
-  solution.reinit(dof_handler.n_dofs());
-  system_matrix.reinit(discretization.get_sparsity_pattern());
 
-  assembler.initialize(system_matrix, rhs);
+  // Pass the matrix and rhs to the assembler
+  assembler.initialize(direction_matrix, direction_rhs);
 }
 
 void
 Problem::assemble_direction(const Point<2> dir)
 {
-  system_matrix = 0;
-  rhs = 0;
+  // Zero lhs and rhs before assembly
+  direction_matrix = 0;
+  direction_rhs = 0;
 
   MeshWorker::DoFInfo<2> dof_info(dof_handler);
 
@@ -50,6 +55,7 @@ Problem::assemble_direction(const Point<2> dir)
         Problem::integrate_face(dinfo1, dinfo2, info1, info2, dir);
       };
 
+  // Call loop to execute the integration
   MeshWorker::loop<2, 2, MeshWorker::DoFInfo<2>, MeshWorker::IntegrationInfoBox<2>>(
       dof_handler.begin_active(),
       dof_handler.end(),
@@ -65,42 +71,40 @@ void
 Problem::integrate_cell(DoFInfo & dinfo, CellInfo & info, const Point<2> dir)
 {
   const FEValuesBase<2> & fe_v = info.fe_values();
-  const unsigned int n_q = fe_v.n_quadrature_points;
-  const unsigned int n_dof = fe_v.dofs_per_cell;
-
   FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
   Vector<double> & local_vector = dinfo.vector(0).block(0);
   const std::vector<double> & JxW = fe_v.get_JxW_values();
 
   // Get material for this cell
-  const unsigned int material_id = dinfo.cell->material_id();
-  Assert(materials.find(material_id) != materials.end(),
+  Assert(materials.find(dinfo.cell->material_id()) != materials.end(),
          ExcMessage("Material id not found in material map"));
-  const Material & material = materials.at(material_id);
+  const Material & material = materials.at(dinfo.cell->material_id());
+
+  // Whether or not this cell has scattering
   const bool has_scattering = material.sigma_s != 0;
 
   // Obtain the old scalar flux if scattering exists in this cell
   std::vector<double> local_scalar_flux_old;
   if (has_scattering)
   {
-    local_scalar_flux_old.resize(n_dof);
-    for (unsigned int i = 0; i < n_dof; ++i)
+    local_scalar_flux_old.resize(fe_v.dofs_per_cell);
+    for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
       local_scalar_flux_old[i] = scalar_flux_old[dinfo.indices[i]];
   }
 
-  for (unsigned int q = 0; q < n_q; ++q)
-  {
-    for (unsigned int i = 0; i < n_dof; ++i)
+  for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
+    for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
     {
       const double v_i = fe_v.shape_value(i, q);
       const double dir_dot_grad_v_i = dir * fe_v.shape_grad(i, q);
+      // Sampled scalar flux used for scattering source at this qp
       double scalar_flux_old_q = 0;
-      for (unsigned int j = 0; j < n_dof; ++j)
+      for (unsigned int j = 0; j < fe_v.dofs_per_cell; ++j)
       {
         const double u_j = fe_v.shape_value(j, q);
         // Streaming + collision
         local_matrix(i, j) += (u_j * JxW[q]) * (material.sigma_t * v_i - dir_dot_grad_v_i);
-        // Accumulate scalar flux for scattering source at this qp
+        // Accumulate old scalar flux
         if (has_scattering)
           scalar_flux_old_q += scalar_flux_old[j] * v_i * JxW[q];
       }
@@ -110,12 +114,29 @@ Problem::integrate_cell(DoFInfo & dinfo, CellInfo & info, const Point<2> dir)
       if (has_scattering)
         local_vector(i) += v_i * material.sigma_s * scalar_flux_old_q * JxW[q];
     }
-  }
 }
 
 void
-Problem::integrate_boundary(DoFInfo & /*dinfo*/, CellInfo & /*info*/, const Point<2> /*dir*/)
+Problem::integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Point<2> dir)
 {
+  // Dot product between the direction and the outgoing normal
+  const double dir_dot_n = dir * info.fe_values().normal_vector(0);
+
+  // Vacuum boundary conditions for now: no incoming flux
+  if (dir_dot_n < 0)
+    return;
+
+  const FEValuesBase<2> & fe_v = info.fe_values();
+  FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
+  const std::vector<double> & JxW = fe_v.get_JxW_values();
+
+  for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
+    for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
+    {
+      const double coeff = dir_dot_n * fe_v.shape_value(i, q) * JxW[q];
+      for (unsigned int j = 0; j < fe_v.dofs_per_cell; ++j)
+        local_matrix(i, j) += coeff * fe_v.shape_value(j, q);
+    }
 }
 
 void
@@ -133,15 +154,14 @@ Problem::integrate_face(
   const auto & fe_v_in = (cell1_out ? info2.fe_values() : info1.fe_values());
 
   // System matrices for the u_out v_out matrix and the u_out v_in matrix
-  DoFInfo & dinfo_out = (cell1_out ? dinfo1 : dinfo2);
-  DoFInfo & dinfo_in = (cell1_out ? dinfo2 : dinfo1);
-  auto & uout_vout_matrix = dinfo_out.matrix(0, false).matrix;
-  auto & uout_vin_matrix = dinfo_in.matrix(0, true).matrix;
+  auto & uout_vout_matrix = (cell1_out ? dinfo1 : dinfo2).matrix(0, false).matrix;
+  auto & uout_vin_matrix = (cell1_out ? dinfo2 : dinfo1).matrix(0, true).matrix;
 
   // Reverse the direction for the dot product if cell 2 is the outgoing cell
   const double dir_dot_nout = (cell1_out ? dir_dot_n1 : -dir_dot_n1);
 
-  const auto & JxW = info1.fe_values().get_JxW_values();
+  // Use quadrature points from cell 1; reference element is the same
+  const std::vector<double> & JxW = info1.fe_values().get_JxW_values();
   for (unsigned int q = 0; q < fe_v_out.n_quadrature_points; ++q)
     for (unsigned int j = 0; j < fe_v_out.dofs_per_cell; ++j)
     {
@@ -159,8 +179,8 @@ Problem::solve_direction()
   SolverControl solver_control(1000, 1e-12);
   SolverRichardson<> solver(solver_control);
   PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
-  preconditioner.initialize(system_matrix, discretization.get_fe().dofs_per_cell);
-  solver.solve(system_matrix, solution, rhs, preconditioner);
+  preconditioner.initialize(direction_matrix, discretization.get_fe().dofs_per_cell);
+  solver.solve(direction_matrix, direction_solution, direction_rhs, preconditioner);
   std::cout << " converged after " << solver_control.last_step() << " iterations " << std::endl;
 }
 
@@ -180,7 +200,7 @@ Problem::solve()
     solve_direction();
 
     // Update scalar flux at each node (weighed by angular weight)
-    scalar_flux.add(aq.w(d), solution);
+    scalar_flux.add(aq.w(d), direction_solution);
   }
 
   scalar_flux_old = scalar_flux;
@@ -189,10 +209,12 @@ Problem::solve()
 void
 Problem::run()
 {
+  // Call setup on each class
   description.setup();
   discretization.setup();
   setup();
 
+  // And... solve
   solve();
 }
 
@@ -203,7 +225,6 @@ Problem::output()
   DataOut<2> data_out;
   data_out.attach_dof_handler(dof_handler);
   data_out.add_data_vector(scalar_flux, "scalar_flux");
-  data_out.add_data_vector(solution, "solution");
   data_out.build_patches();
   data_out.write_vtu(output);
 }
