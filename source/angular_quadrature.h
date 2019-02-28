@@ -2,7 +2,7 @@
 #define ANGULARQUADRATURE_H
 
 #include <deal.II/base/numbers.h>
-#include <deal.II/base/point.h>
+#include <deal.II/base/tensor.h>
 
 #include <math.h>
 
@@ -26,12 +26,12 @@ public:
   }
 
   unsigned int n_dir() const { return directions.size(); }
-  dealii::Point<2> dir(unsigned int i) const { return directions[i]; }
+  dealii::Tensor<1, 2> dir(unsigned int i) const { return directions[i]; }
   double w(unsigned int i) const { return weights[i]; }
 
 private:
   /// Quadrature directions
-  std::vector<dealii::Point<2>> directions;
+  std::vector<dealii::Tensor<1, 2>> directions;
 
   /// Quadrature weights
   std::vector<double> weights;

@@ -20,12 +20,13 @@ class Discretization : public ParameterAcceptor
 public:
   Discretization();
 
+  void renumber_dofs(const unsigned int d);
   void setup();
 
   const AngularQuadrature & get_aq() const { return aq; }
   const DoFHandler<2> & get_dof_handler() const { return dof_handler; }
   const FE_DGQ<2> & get_fe() const { return fe; }
-  const SparsityPattern & get_sparsity_pattern() const { return sparsity_pattern; }
+  const SparsityPattern & get_sparsity_pattern(const unsigned int d) const { return sparsity_patterns[d]; }
 
   MeshWorker::IntegrationInfoBox<2> info_box;
 
@@ -34,7 +35,8 @@ private:
   const MappingQ1<2> mapping;
   FE_DGQ<2> fe;
   DoFHandler<2> dof_handler;
-  SparsityPattern sparsity_pattern;
+  std::vector<std::vector<unsigned int>> downstream_renumberings;
+  std::vector<SparsityPattern> sparsity_patterns;
 
   // The angular quadrature object
   AngularQuadrature aq;

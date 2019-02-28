@@ -23,7 +23,7 @@ Problem::setup()
 {
   // Initialize system storage for a single direction
   direction_rhs.reinit(dof_handler.n_dofs());
-  direction_matrix.reinit(discretization.get_sparsity_pattern());
+  // direction_matrix.reinit(discretization.get_sparsity_pattern());
 
   // Resize system variables
   direction_solution.reinit(dof_handler.n_dofs());
@@ -35,7 +35,7 @@ Problem::setup()
 }
 
 void
-Problem::assemble_direction(const Point<2> dir)
+Problem::assemble_direction(const Tensor<1, 2> dir)
 {
   // Zero lhs and rhs before assembly
   direction_matrix = 0;
@@ -68,7 +68,7 @@ Problem::assemble_direction(const Point<2> dir)
 }
 
 void
-Problem::integrate_cell(DoFInfo & dinfo, CellInfo & info, const Point<2> dir)
+Problem::integrate_cell(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> dir)
 {
   const FEValuesBase<2> & fe_v = info.fe_values();
   FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
@@ -117,7 +117,7 @@ Problem::integrate_cell(DoFInfo & dinfo, CellInfo & info, const Point<2> dir)
 }
 
 void
-Problem::integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Point<2> dir)
+Problem::integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> dir)
 {
   // Dot product between the direction and the outgoing normal
   const double dir_dot_n = dir * info.fe_values().normal_vector(0);
@@ -141,7 +141,7 @@ Problem::integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Point<2> dir
 
 void
 Problem::integrate_face(
-    DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2, const Point<2> dir)
+    DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2, const Tensor<1, 2> dir)
 {
   // Dot product between the direction and the outgoing normal of face 1
   const double dir_dot_n1 = dir * info1.fe_values().normal_vector(0);
@@ -178,7 +178,7 @@ Problem::solve_direction()
 {
   SolverControl solver_control(1000, 1e-12);
   SolverRichardson<> solver(solver_control);
-  PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
+  PreconditionBlockSOR<SparseMatrix<double>> preconditioner;
   preconditioner.initialize(direction_matrix, discretization.get_fe().dofs_per_cell);
   solver.solve(direction_matrix, direction_solution, direction_rhs, preconditioner);
   std::cout << " converged after " << solver_control.last_step() << " iterations " << std::endl;
@@ -194,6 +194,8 @@ Problem::solve()
   for (unsigned int d = 0; d < aq.n_dir(); ++d)
   {
     std::cout << "Solving direction " << d << "...";
+    // discretization.renumber_dofs(d);
+    direction_matrix.reinit(discretization.get_sparsity_pattern(aq.n_dir() - 1));
 
     // Assemble and solve
     assemble_direction(aq.dir(d));
