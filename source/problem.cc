@@ -193,9 +193,13 @@ Problem::solve()
   const AngularQuadrature & aq = discretization.get_aq();
   for (unsigned int d = 0; d < aq.n_dir(); ++d)
   {
+    if (d % (aq.n_dir() / 4) == 0) {
+      std::cout << "Renumbering dofs " << std::endl;
+      discretization.renumber_dofs(d * 4 / aq.n_dir());
+      direction_matrix.reinit(discretization.get_sparsity_pattern(d * 4 / aq.n_dir()));
+    }
+
     std::cout << "Solving direction " << d << "...";
-    // discretization.renumber_dofs(d);
-    direction_matrix.reinit(discretization.get_sparsity_pattern(aq.n_dir() - 1));
 
     // Assemble and solve
     assemble_direction(aq.dir(d));

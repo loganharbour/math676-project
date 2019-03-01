@@ -42,27 +42,26 @@ Discretization::setup()
   aq.init(aq_order);
 
   std::vector<unsigned int> temp(dof_handler.n_dofs());
-  downstream_renumberings.resize(aq.n_dir(), std::vector<unsigned int>(dof_handler.n_dofs()));
-  sparsity_patterns.resize(aq.n_dir());
+  downstream_renumberings.resize(4, std::vector<unsigned int>(dof_handler.n_dofs()));
+  sparsity_patterns.resize(4);
 
   DynamicSparsityPattern dsp(dof_handler.n_dofs());
 
-  DoFRenumbering::downstream(dof_handler, aq.dir(aq.n_dir() - 1));
+  DoFRenumbering::downstream(dof_handler, aq.dir(3 * aq.n_dir() / 4));
 
-  for (unsigned int d = 0; d < aq.n_dir(); ++d)
+  for (unsigned int i = 0; i < 4; ++i)
   {
+    unsigned int d = i * aq.n_dir() / 4;
     DoFRenumbering::compute_downstream(
-        downstream_renumberings[d], temp, dof_handler, aq.dir(d), false);
-    dof_handler.renumber_dofs(downstream_renumberings[d]);
+        downstream_renumberings[i], temp, dof_handler, aq.dir(d), false);
+    dof_handler.renumber_dofs(downstream_renumberings[i]);
     DoFTools::make_flux_sparsity_pattern(dof_handler, dsp);
-    sparsity_patterns[d].copy_from(dsp);
-    std::ofstream out ("direction" + std::to_string(d) + ".svg");
-    sparsity_patterns[d].print_svg (out);
+    sparsity_patterns[i].copy_from(dsp);
   }
 }
 
 void
-Discretization::renumber_dofs(const unsigned int d) {
-  dof_handler.renumber_dofs(downstream_renumberings[d]);
+Discretization::renumber_dofs(const unsigned int i) {
+  dof_handler.renumber_dofs(downstream_renumberings[i]);
 }
 } // namespace SNProblem
