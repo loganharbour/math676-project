@@ -23,7 +23,7 @@ Problem::setup()
 {
   // Initialize system storage for a single direction
   direction_rhs.reinit(dof_handler.n_dofs());
-  // direction_matrix.reinit(discretization.get_sparsity_pattern());
+  direction_matrix.reinit(discretization.get_sparsity_pattern());
 
   // Resize system variables
   direction_solution.reinit(dof_handler.n_dofs());
@@ -68,7 +68,7 @@ Problem::assemble_direction(const Tensor<1, 2> dir)
 }
 
 void
-Problem::integrate_cell(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> dir)
+Problem::integrate_cell(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> dir, const unsigned int quadrant)
 {
   const FEValuesBase<2> & fe_v = info.fe_values();
   FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
@@ -88,7 +88,10 @@ Problem::integrate_cell(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> dir
   if (has_scattering)
   {
     local_scalar_flux_old.resize(fe_v.dofs_per_cell);
-    for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
+    for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i) {
+      if (quadrant != 3)
+        local_scalar_flux_old[i] = scalar_flux_old
+    }
       local_scalar_flux_old[i] = scalar_flux_old[dinfo.indices[i]];
   }
 
@@ -176,12 +179,13 @@ Problem::integrate_face(
 void
 Problem::solve_direction()
 {
-  SolverControl solver_control(1000, 1e-12);
-  SolverRichardson<> solver(solver_control);
+  // SolverControl solver_control(1000, 1e-12);
+  // SolverRichardson<> solver(solver_control);
   PreconditionBlockSOR<SparseMatrix<double>> preconditioner;
   preconditioner.initialize(direction_matrix, discretization.get_fe().dofs_per_cell);
-  solver.solve(direction_matrix, direction_solution, direction_rhs, preconditioner);
-  std::cout << " converged after " << solver_control.last_step() << " iterations " << std::endl;
+  preconditioner.step(direction_solution, direction_rhs);
+  // solver.solve(direction_matrix, direction_solution, direction_rhs, preconditioner);
+  // std::cout << " converged after " << solver_control.last_step() << " iterations " << std::endl;
 }
 
 void
@@ -193,13 +197,15 @@ Problem::solve()
   const AngularQuadrature & aq = discretization.get_aq();
   for (unsigned int d = 0; d < aq.n_dir(); ++d)
   {
+    // Renumber at the beginning of a quadrant
     if (d % (aq.n_dir() / 4) == 0) {
-      std::cout << "Renumbering dofs " << std::endl;
-      discretization.renumber_dofs(d * 4 / aq.n_dir());
-      direction_matrix.reinit(discretization.get_sparsity_pattern(d * 4 / aq.n_dir()));
+      const unsigned int q = d * 4 / aq.n_dir();
+      std::cout << "Renumbering dofs for quadrant " << q << std::endl;
+      discretization.renumber_to_quadrant(q);
+      direction_matrix.reinit(discretization.get_sparsity_quadrant(q));
     }
 
-    std::cout << "Solving direction " << d << "...";
+    std::cout << "Solving direction " << d << std::endl;
 
     // Assemble and solve
     assemble_direction(aq.dir(d));

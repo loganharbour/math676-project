@@ -56,7 +56,10 @@ private:
 
   using DoFInfo = MeshWorker::DoFInfo<2>;
   using CellInfo = MeshWorker::IntegrationInfo<2>;
-  void integrate_cell(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> dir);
+  void integrate_cell(DoFInfo & dinfo,
+                      CellInfo & info,
+                      const Tensor<1, 2> dir,
+                      const unsigned int quadrant);
   void integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> dir);
   void integrate_face(DoFInfo & dinfo1,
                       DoFInfo & dinfo2,
