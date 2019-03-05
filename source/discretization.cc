@@ -19,6 +19,9 @@ Discretization::Discretization()
 
   uniform_refinement = 0;
   add_parameter("uniform_refinement", uniform_refinement);
+
+  renumber = true;
+  add_parameter("renumber_quadrants", renumber);
 }
 
 void
@@ -43,11 +46,12 @@ Discretization::setup()
 
   // Default renumbering is downstream for the first direction in the last quadrant
   DynamicSparsityPattern dsp(dof_handler.n_dofs());
-  DoFRenumbering::downstream(dof_handler, aq.dir(3 * aq.n_dir() / 4));
+  DoFRenumbering::downstream(dof_handler, aq.dir(3 * aq.n_dir() / 4), false);
   DoFTools::make_flux_sparsity_pattern(dof_handler, dsp);
   sparsity_pattern.copy_from(dsp);
 
-  setup_quadrant_renumbering();
+  if (renumber)
+    setup_quadrant_renumbering();
 }
 
 void
@@ -70,7 +74,7 @@ Discretization::setup_quadrant_renumbering()
   const auto ref_dir = aq.dir(3 * aq.n_dir() / 4);
 
   // Store renumberings for quadrant q from the quadrant before it and
-  // renumberings for quadrant q to the reference quadrant. By default, we
+  // renumberings for quadrant q to the reference quadrlant. By default, we
   // are currently renumbered to the final quadrant; therefore, setting for
   // quadrant 0 does the correct renumbering from quadrant 3 -> 0.
   for (unsigned int q = 0; q < 4; ++q)

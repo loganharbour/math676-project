@@ -27,11 +27,20 @@ public:
   const AngularQuadrature & get_aq() const { return aq; }
   const DoFHandler<2> & get_dof_handler() const { return dof_handler; }
   const FE_DGQ<2> & get_fe() const { return fe; }
+  const std::vector<unsigned int> & get_renumber_ref_quadrant(const unsigned int q) const
+  {
+    return renumber_ref_quadrant[q];
+  }
+  unsigned int get_renumber_ref_quadrant(const unsigned int q, const unsigned int i)
+  {
+    return renumber_ref_quadrant[q][i];
+  }
   const SparsityPattern & get_sparsity_quadrant(const unsigned int q) const
   {
     return sparsity_quadrant[q];
   }
   const SparsityPattern & get_sparsity_pattern() const { return sparsity_pattern; }
+  bool & renumber_quadrants() { return renumber; }
 
   MeshWorker::IntegrationInfoBox<2> info_box;
 
@@ -54,6 +63,8 @@ private:
   unsigned int aq_order;
   // Mesh uniform refinements
   unsigned int uniform_refinement;
+  // Whether or not to renumber quadrants
+  bool renumber;
 };
 } // namespace SNProblem
 

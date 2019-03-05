@@ -14,7 +14,8 @@ namespace SNProblem
 using namespace dealii;
 
 Problem::Problem()
-  : dof_handler(discretization.get_dof_handler()), materials(description.get_materials())
+  : dof_handler(discretization.get_dof_handler()),
+    materials(description.get_materials()), renumber(discretization.renumber_quadrants())
 {
 }
 
@@ -35,8 +36,12 @@ Problem::setup()
 }
 
 void
-Problem::assemble_direction(const Tensor<1, 2> dir)
+Problem::assemble_direction(const unsigned int d)
 {
+  const AngularQuadrature & aq = discretization.get_aq();
+  const Tensor<1, 2> dir = aq.dir(d);
+  const unsigned int quadrant = aq.quadrant(d);
+
   // Zero lhs and rhs before assembly
   direction_matrix = 0;
   direction_rhs = 0;
@@ -45,7 +50,7 @@ Problem::assemble_direction(const Tensor<1, 2> dir)
 
   // Lambda functions for passing into MeshWorker::loop
   const auto cell_worker = [&](DoFInfo & dinfo, CellInfo & info) {
-    Problem::integrate_cell(dinfo, info, dir);
+    Problem::integrate_cell(dinfo, info, dir, quadrant);
   };
   const auto boundary_worker = [&](DoFInfo & dinfo, CellInfo & info) {
     Problem::integrate_boundary(dinfo, info, dir);
@@ -68,7 +73,10 @@ Problem::assemble_direction(const Tensor<1, 2> dir)
 }
 
 void
-Problem::integrate_cell(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> dir, const unsigned int quadrant)
+Problem::integrate_cell(DoFInfo & dinfo,
+                        CellInfo & info,
+                        const Tensor<1, 2> dir,
+                        const unsigned int quadrant)
 {
   const FEValuesBase<2> & fe_v = info.fe_values();
   FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
@@ -87,12 +95,16 @@ Problem::integrate_cell(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> dir
   std::vector<double> local_scalar_flux_old;
   if (has_scattering)
   {
+    unsigned int index;
     local_scalar_flux_old.resize(fe_v.dofs_per_cell);
-    for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i) {
-      if (quadrant != 3)
-        local_scalar_flux_old[i] = scalar_flux_old
+    for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
+    {
+      if (renumber && quadrant != 3)
+        index = discretization.get_renumber_ref_quadrant(quadrant, dinfo.indices[i]);
+      else
+        index = dinfo.indices[i];
+      local_scalar_flux_old[i] = scalar_flux_old[index];
     }
-      local_scalar_flux_old[i] = scalar_flux_old[dinfo.indices[i]];
   }
 
   for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
@@ -179,13 +191,13 @@ Problem::integrate_face(
 void
 Problem::solve_direction()
 {
-  // SolverControl solver_control(1000, 1e-12);
-  // SolverRichardson<> solver(solver_control);
+  SolverControl solver_control(1000, 1e-12);
+  SolverRichardson<> solver(solver_control);
   PreconditionBlockSOR<SparseMatrix<double>> preconditioner;
   preconditioner.initialize(direction_matrix, discretization.get_fe().dofs_per_cell);
-  preconditioner.step(direction_solution, direction_rhs);
-  // solver.solve(direction_matrix, direction_solution, direction_rhs, preconditioner);
-  // std::cout << " converged after " << solver_control.last_step() << " iterations " << std::endl;
+  // preconditioner.step(direction_solution, direction_rhs);
+  solver.solve(direction_matrix, direction_solution, direction_rhs, preconditioner);
+  std::cout << " converged after " << solver_control.last_step() << " iterations " << std::endl;
 }
 
 void
@@ -197,22 +209,32 @@ Problem::solve()
   const AngularQuadrature & aq = discretization.get_aq();
   for (unsigned int d = 0; d < aq.n_dir(); ++d)
   {
+    const unsigned int quadrant = aq.quadrant(d);
+    const double weight = aq.w(d);
+
     // Renumber at the beginning of a quadrant
-    if (d % (aq.n_dir() / 4) == 0) {
-      const unsigned int q = d * 4 / aq.n_dir();
-      std::cout << "Renumbering dofs for quadrant " << q << std::endl;
-      discretization.renumber_to_quadrant(q);
-      direction_matrix.reinit(discretization.get_sparsity_quadrant(q));
+    if (renumber && (d == 0 || quadrant != aq.quadrant(d - 1)))
+    {
+      std::cout << "Renumbering dofs for quadrant " << quadrant << std::endl;
+      discretization.renumber_to_quadrant(quadrant);
+      direction_matrix.reinit(discretization.get_sparsity_quadrant(quadrant));
     }
 
     std::cout << "Solving direction " << d << std::endl;
 
     // Assemble and solve
-    assemble_direction(aq.dir(d));
+    assemble_direction(d);
     solve_direction();
 
     // Update scalar flux at each node (weighed by angular weight)
-    scalar_flux.add(aq.w(d), direction_solution);
+    if (quadrant == 3 || !renumber)
+      scalar_flux.add(weight, direction_solution);
+    else
+    {
+      const auto & to_ref = discretization.get_renumber_ref_quadrant(quadrant);
+      for (unsigned int i = 0; i < discretization.get_fe().dofs_per_cell; ++i)
+        scalar_flux[to_ref[i]] += weight * direction_solution[i];
+    }
   }
 
   scalar_flux_old = scalar_flux;

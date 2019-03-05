@@ -30,7 +30,7 @@ public:
 private:
   void setup();
 
-  void assemble_direction(const Tensor<1, 2> dir);
+  void assemble_direction(const unsigned int d);
   void solve_direction();
   void solve();
 
@@ -39,6 +39,7 @@ private:
 
   const DoFHandler<2> & dof_handler;
   const std::map<const unsigned int, const Material> & materials;
+  const bool & renumber;
 
   /// System matrix used in solving a single direction
   SparseMatrix<double> direction_matrix;
