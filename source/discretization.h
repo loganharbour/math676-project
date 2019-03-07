@@ -27,6 +27,10 @@ public:
   const AngularQuadrature & get_aq() const { return aq; }
   const DoFHandler<2> & get_dof_handler() const { return dof_handler; }
   const FE_DGQ<2> & get_fe() const { return fe; }
+  const std::vector<unsigned int> & get_renumber_quadrant(const unsigned int q) const
+  {
+    return renumber_quadrant[q];
+  }
   const std::vector<unsigned int> & get_renumber_ref_quadrant(const unsigned int q) const
   {
     return renumber_ref_quadrant[q];
@@ -45,6 +49,8 @@ public:
   MeshWorker::IntegrationInfoBox<2> info_box;
 
 private:
+  void compare(std::vector<unsigned int> & num1, std::vector<unsigned int> & num2);
+
   Triangulation<2> triangulation;
   const MappingQ1<2> mapping;
   FE_DGQ<2> fe;

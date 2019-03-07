@@ -15,7 +15,8 @@ using namespace dealii;
 
 Problem::Problem()
   : dof_handler(discretization.get_dof_handler()),
-    materials(description.get_materials()), renumber(discretization.renumber_quadrants())
+    materials(description.get_materials()),
+    renumber(discretization.renumber_quadrants())
 {
 }
 
@@ -191,13 +192,21 @@ Problem::integrate_face(
 void
 Problem::solve_direction()
 {
-  SolverControl solver_control(1000, 1e-12);
-  SolverRichardson<> solver(solver_control);
-  PreconditionBlockSOR<SparseMatrix<double>> preconditioner;
-  preconditioner.initialize(direction_matrix, discretization.get_fe().dofs_per_cell);
-  // preconditioner.step(direction_solution, direction_rhs);
-  solver.solve(direction_matrix, direction_solution, direction_rhs, preconditioner);
-  std::cout << " converged after " << solver_control.last_step() << " iterations " << std::endl;
+  if (!renumber)
+  {
+    SolverControl solver_control(1000, 1e-12);
+    SolverRichardson<> solver(solver_control);
+    PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
+    preconditioner.initialize(direction_matrix, discretization.get_fe().dofs_per_cell);
+    solver.solve(direction_matrix, direction_solution, direction_rhs, preconditioner);
+    std::cout << "  Converged after " << solver_control.last_step() << " iterations " << std::endl;
+  }
+  else
+  {
+    PreconditionBlockSOR<SparseMatrix<double>> preconditioner;
+    preconditioner.initialize(direction_matrix, discretization.get_fe().dofs_per_cell);
+    preconditioner.step(direction_solution, direction_rhs);
+  }
 }
 
 void
@@ -231,12 +240,17 @@ Problem::solve()
       scalar_flux.add(weight, direction_solution);
     else
     {
+      std::cout << "to ref" << std::endl;
       const auto & to_ref = discretization.get_renumber_ref_quadrant(quadrant);
       for (unsigned int i = 0; i < discretization.get_fe().dofs_per_cell; ++i)
         scalar_flux[to_ref[i]] += weight * direction_solution[i];
     }
   }
 
+  const auto & test1 = discretization.get_renumber_ref_quadrant(0);
+  const auto & test2 = discretization.get_renumber_quadrant(3);
+  std::cout << test1[0] << std::endl;
+  std::cout << test2[test1[0]] << std::endl;
   scalar_flux_old = scalar_flux;
 }
 

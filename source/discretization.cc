@@ -46,7 +46,7 @@ Discretization::setup()
 
   // Default renumbering is downstream for the first direction in the last quadrant
   DynamicSparsityPattern dsp(dof_handler.n_dofs());
-  DoFRenumbering::downstream(dof_handler, aq.dir(3 * aq.n_dir() / 4), false);
+  DoFRenumbering::downstream(dof_handler, aq.dir(3 * aq.n_dir() / 4 + 1), false);
   DoFTools::make_flux_sparsity_pattern(dof_handler, dsp);
   sparsity_pattern.copy_from(dsp);
 
@@ -71,7 +71,7 @@ Discretization::setup_quadrant_renumbering()
   renumber_ref_quadrant.resize(3, std::vector<unsigned int>(dof_handler.n_dofs()));
 
   // Reference quadrant direction
-  const auto ref_dir = aq.dir(3 * aq.n_dir() / 4);
+  const auto ref_dir = aq.dir(3 * aq.n_dir() / 4 + 1);
 
   // Store renumberings for quadrant q from the quadrant before it and
   // renumberings for quadrant q to the reference quadrlant. By default, we
@@ -79,12 +79,14 @@ Discretization::setup_quadrant_renumbering()
   // quadrant 0 does the correct renumbering from quadrant 3 -> 0.
   for (unsigned int q = 0; q < 4; ++q)
   {
-    // Last direction for this quadrant
-    const auto dir = aq.dir(q * aq.n_dir() / 4);
+    // Second direction for this quadrant
+    const unsigned int d = q * aq.n_dir() / 4 + 1;
+    const auto dir = aq.dir(d);
+    std::cout << "Setting up renumbering for quadrant " << q << " with direction " << d
+              << std::endl;
 
     // Renumbering from quadrant q - 1 to quadrant q
-    DoFRenumbering::compute_downstream(
-        renumber_quadrant[q], temp, dof_handler, dir, false);
+    DoFRenumbering::compute_downstream(renumber_quadrant[q], temp, dof_handler, dir, false);
 
     // Store sparsity pattern for quadrant q
     dof_handler.renumber_dofs(renumber_quadrant[q]);
@@ -96,9 +98,21 @@ Discretization::setup_quadrant_renumbering()
       DoFRenumbering::compute_downstream(
           renumber_ref_quadrant[q], temp, dof_handler, ref_dir, false);
   }
+
+  compare(renumber_quadrant[3], renumber_quadrant[0]);
 }
+
 void
-Discretization::renumber_to_quadrant(const unsigned int q) {
+Discretization::compare(std::vector<unsigned int> & num1, std::vector<unsigned int> & num2)
+{
+  for (unsigned int i = 0; i < num1.size(); ++i)
+    if (num1[i] != num2[num1[i]])
+      std::cout << "not equal!" << std::endl;
+}
+
+void
+Discretization::renumber_to_quadrant(const unsigned int q)
+{
   dof_handler.renumber_dofs(renumber_quadrant[q]);
 }
 } // namespace SNProblem
