@@ -5,6 +5,7 @@
 #include <deal.II/base/tensor.h>
 
 #include <math.h>
+#include <algorithm>
 
 namespace SNProblem
 {
@@ -18,20 +19,22 @@ public:
     N = 2 * n;
     directions.resize(N);
     weights.resize(N, 1.0 / N);
-    quadrants.resize(N);
     for (unsigned int d = 0; d < N; ++d)
     {
       double omega = dealii::numbers::PI * (d + 0.5) / n;
       directions[d][0] = std::cos(omega);
       directions[d][1] = std::sin(omega);
-      quadrants[d] = (unsigned int)std::floor((float)d * 4 / N);
+    }
+    for (unsigned int d = 0; d < n / 2; ++d)
+    {
+      std::swap(directions[d], directions[d + 3 * n / 2]);
+      std::swap(weights[d], weights[d + 3 * n / 2]);
     }
   }
 
   unsigned int n_dir() const { return N; }
   dealii::Tensor<1, 2> dir(const unsigned int d) const { return directions[d]; }
   double w(const unsigned int d) const { return weights[d]; }
-  unsigned int quadrant(const unsigned int d) const { return quadrants[d]; }
 
 private:
   // Number of directions
@@ -42,9 +45,6 @@ private:
 
   /// Quadrature weights
   std::vector<double> weights;
-
-  /// Quadrants
-  std::vector<unsigned int> quadrants;
 };
 } // namespace SNProblem
 

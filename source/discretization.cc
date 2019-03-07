@@ -21,7 +21,7 @@ Discretization::Discretization()
   add_parameter("uniform_refinement", uniform_refinement);
 
   renumber = true;
-  add_parameter("renumber_quadrants", renumber);
+  add_parameter("renumber", renumber);
 }
 
 void
@@ -44,75 +44,23 @@ Discretization::setup()
   // Initialize angular quadrature
   aq.init(aq_order);
 
-  // Default renumbering is downstream for the first direction in the last quadrant
+  // Default renumbering is downstream for the n_dir/2 direction
   DynamicSparsityPattern dsp(dof_handler.n_dofs());
-  DoFRenumbering::downstream(dof_handler, aq.dir(3 * aq.n_dir() / 4 + 1), false);
+  DoFRenumbering::downstream(dof_handler, aq.dir(aq.n_dir() / 2), false);
   DoFTools::make_flux_sparsity_pattern(dof_handler, dsp);
   sparsity_pattern.copy_from(dsp);
 
+  // Compute extra downstream numbering if requested
   if (renumber)
-    setup_quadrant_renumbering();
-}
-
-void
-Discretization::setup_quadrant_renumbering()
-{
-  // Sparsity pattern we will use multiple times
-  DynamicSparsityPattern dsp(dof_handler.n_dofs());
-
-  // Temprorary vector for the other input argument to compute_downstream
-  std::vector<unsigned int> temp(dof_handler.n_dofs());
-
-  // Renumberings from 3 -> 0, 0 -> 1, 1 -> 2, 2 -> 3
-  renumber_quadrant.resize(4, std::vector<unsigned int>(dof_handler.n_dofs()));
-  // Sparsity patterns for quadrants 0, 1, 2, 3
-  sparsity_quadrant.resize(4);
-  // Renumberings from 0 -> 3, 1 -> 3, 2 -> 3
-  renumber_ref_quadrant.resize(3, std::vector<unsigned int>(dof_handler.n_dofs()));
-
-  // Reference quadrant direction
-  const auto ref_dir = aq.dir(3 * aq.n_dir() / 4 + 1);
-
-  // Store renumberings for quadrant q from the quadrant before it and
-  // renumberings for quadrant q to the reference quadrlant. By default, we
-  // are currently renumbered to the final quadrant; therefore, setting for
-  // quadrant 0 does the correct renumbering from quadrant 3 -> 0.
-  for (unsigned int q = 0; q < 4; ++q)
   {
-    // Second direction for this quadrant
-    const unsigned int d = q * aq.n_dir() / 4 + 1;
-    const auto dir = aq.dir(d);
-    std::cout << "Setting up renumbering for quadrant " << q << " with direction " << d
-              << std::endl;
-
-    // Renumbering from quadrant q - 1 to quadrant q
-    DoFRenumbering::compute_downstream(renumber_quadrant[q], temp, dof_handler, dir, false);
-
-    // Store sparsity pattern for quadrant q
-    dof_handler.renumber_dofs(renumber_quadrant[q]);
-    DoFTools::make_flux_sparsity_pattern(dof_handler, dsp);
-    sparsity_quadrant[q].copy_from(dsp);
-
-    // Renumbering from quadrant q to the reference (quadrant 3)
-    if (q != 3)
-      DoFRenumbering::compute_downstream(
-          renumber_ref_quadrant[q], temp, dof_handler, ref_dir, false);
+    renumberings.resize(2, std::vector<unsigned int>(dof_handler.n_dofs()));
+    DoFRenumbering::compute_downstream(renumberings[0], renumberings[1], dof_handler, aq.dir(0), false);
   }
-
-  compare(renumber_quadrant[3], renumber_quadrant[0]);
 }
 
 void
-Discretization::compare(std::vector<unsigned int> & num1, std::vector<unsigned int> & num2)
+Discretization::renumber_dofs(const unsigned int half)
 {
-  for (unsigned int i = 0; i < num1.size(); ++i)
-    if (num1[i] != num2[num1[i]])
-      std::cout << "not equal!" << std::endl;
-}
-
-void
-Discretization::renumber_to_quadrant(const unsigned int q)
-{
-  dof_handler.renumber_dofs(renumber_quadrant[q]);
+  dof_handler.renumber_dofs(renumberings[half]);
 }
 } // namespace SNProblem
