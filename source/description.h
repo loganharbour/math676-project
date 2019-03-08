@@ -17,6 +17,15 @@ public:
   void setup();
 
   const std::map<const unsigned int, const Material> & get_materials() const { return materials; }
+  const std::map<const unsigned int, const double> & get_perpendicular_bcs() const
+  {
+    return perpendicular_bcs;
+  }
+  const std::map<const unsigned int, const double> & get_isotropic_bcs() const
+  {
+    return isotropic_bcs;
+  }
+  bool has_incident_bcs() { return incident_bcs; }
 
 private:
   void setup_materials();
@@ -27,6 +36,7 @@ private:
   // Boundary conditions
   std::map<const unsigned int, const double> perpendicular_bcs;
   std::map<const unsigned int, const double> isotropic_bcs;
+  bool incident_bcs = false;
 
   std::vector<unsigned int> material_ids;
   std::vector<double> material_sigma_t;

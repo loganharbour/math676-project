@@ -79,8 +79,14 @@ Description::setup_boundary_conditions()
   {
     if (isotropic_bcs.find(isotropic_boundary_ids[i]) != isotropic_bcs.end())
       throw ExcMessage("Duplicate isotropic boundary ids provided");
+    if (perpendicular_bcs.find(isotropic_boundary_ids[i]) != perpendicular_bcs.end())
+      throw ExcMessage("Boundary has both a perpendicular and an isotropic boundary condition");
     isotropic_bcs.emplace(isotropic_boundary_ids[i], isotropic_boundary_fluxes[i]);
   }
+
+  // Marker for incident BCs
+  if (isotropic_bcs.size() != 0 || perpendicular_bcs.size() != 0)
+    incident_bcs = true;
 }
 
 } // namespace SNProblem

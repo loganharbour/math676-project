@@ -78,9 +78,9 @@ Problem::integrate_cell(DoFInfo & dinfo,
   const std::vector<double> & JxW = fe_v.get_JxW_values();
 
   // Get material for this cell
-  Assert(materials.find(dinfo.cell->material_id()) != materials.end(),
-         ExcMessage("Material id not found in material map"));
-  const Material & material = materials.at(dinfo.cell->material_id());
+  auto search = materials.find(dinfo.cell->material_id());
+  Assert(search != materials.end(), ExcMessage("Material id not found in material map"));
+  const Material & material = search->second;
 
   // Whether or not this cell has scattering
   const bool has_scattering = material.sigma_s != 0;
@@ -131,21 +131,57 @@ Problem::integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2>
   // Dot product between the direction and the outgoing normal
   const double dir_dot_n = dir * info.fe_values().normal_vector(0);
 
-  // Vacuum boundary conditions for now: no incoming flux
+  // Face is incoming: check incident boundary conditions
   if (dir_dot_n < 0)
-    return;
+  {
+    // Exit face if problem does not have incident boundary conditions
+    if (!description.has_incident_bcs())
+      return;
 
-  const FEValuesBase<2> & fe_v = info.fe_values();
-  FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
-  const std::vector<double> & JxW = fe_v.get_JxW_values();
-
-  for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
-    for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
+    double bc_value = 0;
+    // Search for an isotropic boundary condition
+    const auto & isotropic_bcs = description.get_isotropic_bcs();
+    auto search = isotropic_bcs.find(dinfo.face->boundary_id());
+    // Found an isotropic boundary condition
+    if (search != isotropic_bcs.end())
+      bc_value = search->second;
+    // Search for a perpendicular boundary condition
+    else
     {
-      const double coeff = dir_dot_n * fe_v.shape_value(i, q) * JxW[q];
-      for (unsigned int j = 0; j < fe_v.dofs_per_cell; ++j)
-        local_matrix(i, j) += coeff * fe_v.shape_value(j, q);
+      const auto & perpendicular_bcs = description.get_perpendicular_bcs();
+      search = perpendicular_bcs.find(dinfo.face->boundary_id());
+      // Found a perpendicular boundary condition
+      if (search != perpendicular_bcs.end())
+        bc_value = search->second;
+      // Didn't find any incident boundary conditions
+      else
+        return;
     }
+
+    // Continue if we have a nonzero value
+    const FEValuesBase<2> & fe_v = info.fe_values();
+    Vector<double> & local_vector = dinfo.vector(0).block(0);
+    const std::vector<double> & JxW = fe_v.get_JxW_values();
+
+    for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
+      for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
+        local_vector(i) += -bc_value * dir_dot_n * fe_v.shape_value(i, q) * JxW[q];
+  }
+  // Face is outgoing
+  else
+  {
+    const FEValuesBase<2> & fe_v = info.fe_values();
+    FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
+    const std::vector<double> & JxW = fe_v.get_JxW_values();
+
+    for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
+      for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
+      {
+        const double coeff = dir_dot_n * fe_v.shape_value(i, q) * JxW[q];
+        for (unsigned int j = 0; j < fe_v.dofs_per_cell; ++j)
+          local_matrix(i, j) += coeff * fe_v.shape_value(j, q);
+      }
+  }
 }
 
 void
