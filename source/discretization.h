@@ -55,6 +55,7 @@ private:
   bool renumber;
   // Renumberings between half ranges (if enabled)
   std::vector<std::vector<unsigned int>> renumberings;
+
 };
 } // namespace SNProblem
 

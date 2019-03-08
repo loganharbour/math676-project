@@ -222,9 +222,8 @@ Problem::solve()
       discretization.renumber_dofs(half);
     }
 
-    std::cout << "Solving direction " << d << std::endl;
-
     // Assemble and solve
+    std::cout << "Solving direction " << d << std::endl;
     assemble_direction(aq.dir(d), renumber_flux);
     solve_direction();
 
