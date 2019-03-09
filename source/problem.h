@@ -31,7 +31,7 @@ private:
   void setup();
 
   void assemble_direction(const Tensor<1, 2> & dir, const bool renumber_flux);
-  void solve_direction();
+  void solve_direction(const unsigned int d);
   void solve();
 
   Description description;
@@ -39,6 +39,7 @@ private:
 
   const DoFHandler<2> & dof_handler;
   const std::map<const unsigned int, const Material> & materials;
+  const AngularQuadrature & aq;
 
   /// System matrix used in solving a single direction
   SparseMatrix<double> direction_matrix;
@@ -56,6 +57,9 @@ private:
 
   using DoFInfo = MeshWorker::DoFInfo<2>;
   using CellInfo = MeshWorker::IntegrationInfo<2>;
+
+  double scalar_flux_L2_norm();
+  void integrate_cell_L2(DoFInfo & dinfo, CellInfo & info, double & value);
   void integrate_cell(DoFInfo & dinfo,
                       CellInfo & info,
                       const Tensor<1, 2> dir,

@@ -52,6 +52,8 @@ Description::setup_materials()
   // Create a Material for each id
   for (unsigned int i = 0; i < material_ids.size(); ++i)
   {
+    if (material_sigma_s[i] > 0)
+      scattering = true;
     if (materials.find(material_ids[i]) != materials.end())
       throw ExcMessage("Material id already exists in material map");
     materials.emplace(material_ids[i],

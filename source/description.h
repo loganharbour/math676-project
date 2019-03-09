@@ -26,6 +26,7 @@ public:
     return isotropic_bcs;
   }
   bool has_incident_bcs() { return incident_bcs; }
+  bool has_scattering() { return scattering; }
 
 private:
   void setup_materials();
@@ -42,6 +43,7 @@ private:
   std::vector<double> material_sigma_t;
   std::vector<double> material_sigma_s;
   std::vector<double> material_src;
+  bool scattering = false;
 
   // Input perpendicular incident flux boundary conditions
   std::vector<unsigned int> perpendicular_boundary_ids;

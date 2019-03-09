@@ -14,7 +14,9 @@ namespace SNProblem
 using namespace dealii;
 
 Problem::Problem()
-  : dof_handler(discretization.get_dof_handler()), materials(description.get_materials())
+  : dof_handler(discretization.get_dof_handler()),
+    materials(description.get_materials()),
+    aq(discretization.get_aq())
 {
 }
 
@@ -85,19 +87,22 @@ Problem::integrate_cell(DoFInfo & dinfo,
   // Whether or not this cell has scattering
   const bool has_scattering = material.sigma_s != 0;
 
-  // Obtain the old scalar flux if scattering exists in this cell
-  std::vector<double> local_scalar_flux_old;
+  // Compute old scalar flux at each quadrature point for scattering source
+  std::vector<double> scattering_source;
   if (has_scattering)
   {
+    double scalar_flux_old_i;
     unsigned int index;
-    local_scalar_flux_old.resize(fe_v.dofs_per_cell);
+    scattering_source.resize(fe_v.n_quadrature_points);
     for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
     {
       if (renumber_flux)
         index = discretization.get_ref_renumbering(dinfo.indices[i]);
       else
         index = dinfo.indices[i];
-      local_scalar_flux_old[i] = scalar_flux_old[index];
+      scalar_flux_old_i = scalar_flux_old[index];
+      for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
+        scattering_source[q] += material.sigma_s * scalar_flux_old_i * fe_v.shape_value(i, q);
     }
   }
 
@@ -106,22 +111,15 @@ Problem::integrate_cell(DoFInfo & dinfo,
     {
       const double v_i = fe_v.shape_value(i, q);
       const double dir_dot_grad_v_i = dir * fe_v.shape_grad(i, q);
-      // Sampled scalar flux used for scattering source at this qp
-      double scalar_flux_old_q = 0;
       for (unsigned int j = 0; j < fe_v.dofs_per_cell; ++j)
-      {
-        const double u_j = fe_v.shape_value(j, q);
         // Streaming + collision
-        local_matrix(i, j) += (u_j * JxW[q]) * (material.sigma_t * v_i - dir_dot_grad_v_i);
-        // Accumulate old scalar flux
-        if (has_scattering)
-          scalar_flux_old_q += scalar_flux_old[j] * v_i * JxW[q];
-      }
+        local_matrix(i, j) +=
+            (fe_v.shape_value(j, q) * JxW[q]) * (material.sigma_t * v_i - dir_dot_grad_v_i);
       // External source
       local_vector(i) += v_i * material.src * JxW[q];
-      // Scattering gain term
+      // Scattering source
       if (has_scattering)
-        local_vector(i) += v_i * material.sigma_s * scalar_flux_old_q * JxW[q];
+        local_vector(i) += v_i * scattering_source[q] * JxW[q];
     }
 }
 
@@ -219,8 +217,25 @@ Problem::integrate_face(
 }
 
 void
-Problem::solve_direction()
+Problem::solve_direction(const unsigned int d)
 {
+  std::cout << "Solving direction " << d;
+
+  const unsigned int half = (d < aq.n_dir() / 2 ? 0 : 1);
+  const bool renumber_flux = (discretization.do_renumber() && half == 0 ? true : false);
+  const double weight = aq.w(d);
+
+  // Renumber dofs at the beginning of a half range if enabled
+  if (discretization.do_renumber() && (d == 0 || d == aq.n_dir() / 2))
+  {
+    // std::cout << "Renumbering dofs" << std::endl;
+    discretization.renumber_dofs(half);
+  }
+
+  // Assemble the system
+  assemble_direction(aq.dir(d), renumber_flux);
+
+  // Solve without renumbering
   if (!discretization.do_renumber())
   {
     SolverControl solver_control(1000, 1e-12);
@@ -228,53 +243,97 @@ Problem::solve_direction()
     PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
     preconditioner.initialize(direction_matrix, discretization.get_fe().dofs_per_cell);
     solver.solve(direction_matrix, direction_solution, direction_rhs, preconditioner);
-    std::cout << "  Converged after " << solver_control.last_step() << " iterations " << std::endl;
+    std::cout << " - converged after " << solver_control.last_step() << " iterations " << std::endl;
   }
+  // Solve with renumbering
   else
   {
     PreconditionBlockSOR<SparseMatrix<double>> preconditioner;
     preconditioner.initialize(direction_matrix, discretization.get_fe().dofs_per_cell);
     preconditioner.step(direction_solution, direction_rhs);
+    std::cout << std::endl;
   }
+
+  // Update scalar flux at each node (weighed by angular weight)
+  if (renumber_flux)
+  {
+    const auto & to_ref = discretization.get_ref_renumbering();
+    for (unsigned int i = 0; i < dof_handler.n_dofs(); ++i)
+      scalar_flux[i] += weight * direction_solution[to_ref[i]];
+  }
+  else
+    scalar_flux.add(weight, direction_solution);
 }
 
 void
 Problem::solve()
 {
-  // Zero scalar flux for update
-  scalar_flux = 0;
-
-  const AngularQuadrature & aq = discretization.get_aq();
-  for (unsigned int d = 0; d < aq.n_dir(); ++d)
+  for (unsigned int l = 0; l < 100; ++l)
   {
-    const unsigned int half = (d < aq.n_dir() / 2 ? 0 : 1);
-    const bool renumber_flux = (discretization.do_renumber() && half == 0 ? true : false);
-    const double weight = aq.w(d);
+    // Zero scalar flux for update
+    scalar_flux = 0;
 
-    // Renumber dofs at the beginning of a half range if enabled
-    if (discretization.do_renumber() && (d == 0 || d == aq.n_dir() / 2))
+    // Solve each direction
+    for (unsigned int d = 0; d < aq.n_dir(); ++d)
+      solve_direction(d);
+
+    // Source iteration: check for convergence
+    if (description.has_scattering())
     {
-      std::cout << "Renumbering dofs" << std::endl;
-      discretization.renumber_dofs(half);
-    }
+      const double norm = scalar_flux_L2_norm();
+      std::cout << "Source iteration " << l << " norm: " << std::scientific << std::setprecision(2)
+                << norm << std::endl
+                << std::endl;
 
-    // Assemble and solve
-    std::cout << "Solving direction " << d << std::endl;
-    assemble_direction(aq.dir(d), renumber_flux);
-    solve_direction();
-
-    // Update scalar flux at each node (weighed by angular weight)
-    if (renumber_flux)
-    {
-      const auto & to_ref = discretization.get_ref_renumbering();
-      for (unsigned int i = 0; i < dof_handler.n_dofs(); ++i)
-        scalar_flux[i] += weight * direction_solution[to_ref[i]];
+      // If converged, exit
+      if (norm < 1e-12)
+        return;
+      // If not converged, copy to old scalar flux
+      else
+        scalar_flux_old = scalar_flux;
     }
+    // No scattering: no source iteration required
     else
-      scalar_flux.add(weight, direction_solution);
+      return;
   }
+}
 
-  scalar_flux_old = scalar_flux;
+double
+Problem::scalar_flux_L2_norm()
+{
+  double value = 0;
+
+  const auto cell_worker = [&](DoFInfo & dinfo, CellInfo & info) {
+    Problem::integrate_cell_L2(dinfo, info, value);
+  };
+
+  // Call loop to execute the integration
+  MeshWorker::DoFInfo<2> dof_info(dof_handler);
+  MeshWorker::loop<2, 2, MeshWorker::DoFInfo<2>, MeshWorker::IntegrationInfoBox<2>>(
+      dof_handler.begin_active(),
+      dof_handler.end(),
+      dof_info,
+      discretization.info_box,
+      cell_worker,
+      NULL,
+      NULL,
+      assembler);
+
+  return value;
+}
+
+void
+Problem::integrate_cell_L2(DoFInfo & dinfo, CellInfo & info, double & value)
+{
+  const FEValuesBase<2> & fe_v = info.fe_values();
+  const std::vector<double> & JxW = fe_v.get_JxW_values();
+
+  for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
+  {
+    const double diff_i = scalar_flux[dinfo.indices[i]] - scalar_flux_old[dinfo.indices[i]];
+    for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
+      value += std::pow(fe_v.shape_value(i, q) * diff_i, 2) * JxW[q];
+  }
 }
 
 void
