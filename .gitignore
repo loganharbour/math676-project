@@ -26,6 +26,10 @@ cmake_install.cmake
 *.aux
 *.log
 *.synctex.gz
+*.nav
+*.out
+*.snm
+*.toc
 
 # executable
 project
