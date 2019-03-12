@@ -33,6 +33,7 @@ public:
 
 private:
   void setup();
+
   void solve();
 
   void solve_direction(const unsigned int d);

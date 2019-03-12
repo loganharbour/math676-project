@@ -18,11 +18,23 @@ Problem::Problem()
 }
 
 void
+Problem::run()
+{
+  setup();
+  solve();
+  output();
+}
+
+void
 Problem::setup()
 {
-  // Setup other classes first
-  description.setup();
+  // Setup mesh
   discretization.setup();
+
+  // Setup description (which requres material ids owned by the mesh)
+  std::set<unsigned int> mesh_material_ids;
+  discretization.get_material_ids(mesh_material_ids);
+  description.setup(mesh_material_ids);
 
   // Initialize system storage for a single direction
   direction_rhs.reinit(dof_handler.n_dofs());
@@ -70,14 +82,6 @@ Problem::solve()
   }
 
   std::cout << "Source iteration did not converge" << std::endl;
-}
-
-void
-Problem::run()
-{
-  setup();
-  solve();
-  output();
 }
 
 } // namespace SNProblem

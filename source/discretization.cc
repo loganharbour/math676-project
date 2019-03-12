@@ -54,8 +54,18 @@ Discretization::setup()
   if (renumber)
   {
     renumberings.resize(2, std::vector<unsigned int>(dof_handler.n_dofs()));
-    DoFRenumbering::compute_downstream(renumberings[0], renumberings[1], dof_handler, aq.dir(0), false);
+    DoFRenumbering::compute_downstream(
+        renumberings[0], renumberings[1], dof_handler, aq.dir(0), false);
   }
+}
+
+void
+Discretization::get_material_ids(std::set<unsigned int> & material_ids) const
+{
+  material_ids.clear();
+  for (const auto & cell : dof_handler.active_cell_iterators())
+    if (material_ids.find(cell->material_id()) == material_ids.end())
+      material_ids.insert(cell->material_id());
 }
 
 void

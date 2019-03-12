@@ -14,7 +14,7 @@ class Description : public dealii::ParameterAcceptor
 public:
   Description();
 
-  void setup();
+  void setup(const std::set<unsigned int> & mesh_material_ids);
 
   const std::map<const unsigned int, const Material> & get_materials() const { return materials; }
   const std::map<const unsigned int, const double> & get_perpendicular_bcs() const
@@ -29,7 +29,7 @@ public:
   bool has_scattering() { return scattering; }
 
 private:
-  void setup_materials();
+  void setup_materials(const std::set<unsigned int> & mesh_material_ids);
   void setup_boundary_conditions();
 
   std::map<const unsigned int, const Material> materials;

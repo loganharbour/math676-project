@@ -11,10 +11,10 @@ using namespace dealii;
 Description::Description() : ParameterAcceptor("Description")
 {
   // Initialize default material properties
-  material_ids = {0};
-  material_sigma_t = {100.0};
-  material_sigma_s = {0.0};
-  material_src = {1.0};
+  material_ids = {};
+  material_sigma_t = {};
+  material_sigma_s = {};
+  material_src = {};
   // Initialize default boundary conditions
   perpendicular_boundary_ids = {};
   perpendicular_boundary_fluxes = {};
@@ -34,14 +34,14 @@ Description::Description() : ParameterAcceptor("Description")
 }
 
 void
-Description::setup()
+Description::setup(const std::set<unsigned int> & mesh_material_ids)
 {
-  setup_materials();
+  setup_materials(mesh_material_ids);
   setup_boundary_conditions();
 }
 
 void
-Description::setup_materials()
+Description::setup_materials(const std::set<unsigned int> & mesh_material_ids)
 {
   // Make sure all material vectors are the same size
   const auto & double_inputs = {material_sigma_t, material_sigma_s, material_src};
@@ -49,13 +49,25 @@ Description::setup_materials()
     if (input.size() != material_ids.size())
       throw ExcMessage("Material input size mismatch");
 
-  // Create a Material for each id
+  // Make sure we have a user-defined material for each mesh material id
+  for (auto it = mesh_material_ids.begin(); it != mesh_material_ids.end(); ++it)
+    if (std::find(material_ids.begin(), material_ids.end(), *it) == material_ids.end())
+      throw ExcMessage("Material missing for id " + std::to_string(*it));
+
+  // Make sure user isn't providing extra materials that don't exist in the mesh
+  if (material_ids.size() != mesh_material_ids.size())
+    throw ExcMessage("Extraneous materials provided");
+
   for (unsigned int i = 0; i < material_ids.size(); ++i)
   {
+    // Marker for if the problem has scattering
     if (material_sigma_s[i] > 0)
       scattering = true;
+    // Check for duplicate ids
     if (materials.find(material_ids[i]) != materials.end())
-      throw ExcMessage("Material id already exists in material map");
+      throw ExcMessage("Material id " + std::to_string(material_ids[i]) +
+                       " provided more than once");
+    // Insert into material map
     materials.emplace(material_ids[i],
                       Material(material_sigma_t[i], material_sigma_s[i], material_src[i]));
   }
