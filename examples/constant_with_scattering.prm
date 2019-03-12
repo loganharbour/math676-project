@@ -1,0 +1,24 @@
+# Constant solution example with scattering and isotropic boundary conditions
+# that match the constant solution value. One would expect a solution of
+# q/sigma_a = 0.0111 repeating
+# ---------------------
+subsection Description
+  set material_ids              = 0
+  set material_sigma_s          = 10
+  set material_sigma_t          = 100
+  set material_src              = 1
+  set isotropic_boundary_ids    = 0
+  set isotropic_boundary_fluxes = 0.0111111111111
+end
+
+
+subsection Discretization
+  set aq_order           = 10
+  set renumber           = true
+  set uniform_refinement = 5
+end
+
+
+subsection Problem
+  set vtu_filename = constant_with_scattering
+end

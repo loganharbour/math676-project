@@ -1,0 +1,23 @@
+# Constant absorber example with isotropic boundary conditions that match
+# the constant solution value. One would expect a solution of q/sigma_a = 0.01
+# ---------------------
+subsection Description
+  set material_ids              = 0
+  set material_sigma_s          = 0
+  set material_sigma_t          = 100
+  set material_src              = 1
+  set isotropic_boundary_ids    = 0
+  set isotropic_boundary_fluxes = 0.01
+end
+
+
+subsection Discretization
+  set aq_order           = 10
+  set renumber           = true
+  set uniform_refinement = 5
+end
+
+
+subsection Problem
+  set vtu_filename = constant_absorber
+end
