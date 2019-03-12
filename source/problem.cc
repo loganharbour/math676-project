@@ -10,10 +10,10 @@ Problem::Problem()
     materials(description.get_materials()),
     aq(discretization.get_aq())
 {
-  vtu_filename = "output";
+  // .vtu output filename (default: output); no output if empty
   add_parameter("vtu_filename", vtu_filename);
 
-  source_iteration_tolerance = 1.0e-12;
+  // Source iteration tolerance (defaut: 1e-12)
   add_parameter("source_iteration_tolerance", source_iteration_tolerance);
 }
 

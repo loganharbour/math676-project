@@ -10,23 +10,13 @@ using namespace dealii;
 
 Description::Description() : ParameterAcceptor("Description")
 {
-  // Initialize default material properties
-  material_ids = {};
-  material_sigma_t = {};
-  material_sigma_s = {};
-  material_src = {};
-  // Initialize default boundary conditions
-  perpendicular_boundary_ids = {};
-  perpendicular_boundary_fluxes = {};
-  isotropic_boundary_ids = {};
-  isotropic_boundary_fluxes = {};
-
-  // Add material parameters
+  // Add material parameters (default: empty)
   add_parameter("material_ids", material_ids);
   add_parameter("material_sigma_t", material_sigma_t);
   add_parameter("material_sigma_s", material_sigma_s);
   add_parameter("material_src", material_src);
-  // Add boundary parameters
+
+  // Add boundary parameters (default: empty)
   add_parameter("perpendicular_boundary_ids", perpendicular_boundary_ids);
   add_parameter("perpendicular_boundary_fluxes", perpendicular_boundary_fluxes);
   add_parameter("isotropic_boundary_ids", isotropic_boundary_ids);

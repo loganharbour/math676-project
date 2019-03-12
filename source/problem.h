@@ -78,10 +78,9 @@ private:
   MeshWorker::Assembler::SystemSimple<SparseMatrix<double>, Vector<double>> assembler;
 
   /// Vtu output filename
-  std::string vtu_filename;
-
+  std::string vtu_filename = "output";
   /// Source iteration tolerance
-  double source_iteration_tolerance;
+  double source_iteration_tolerance = 1.0e-12;
 };
 } // namespace SNProblem
 

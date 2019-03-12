@@ -48,12 +48,12 @@ private:
   AngularQuadrature aq;
 
   // Angular quadrature order
-  unsigned int aq_order;
+  unsigned int aq_order = 10;
   // Mesh uniform refinements
-  unsigned int uniform_refinement;
-
+  unsigned int uniform_refinement = 0;
   // Whether or not to renumber
-  bool renumber;
+  bool renumber = true;
+
   // Renumberings between half ranges (if enabled)
   std::vector<std::vector<unsigned int>> renumberings;
 

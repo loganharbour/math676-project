@@ -39,18 +39,18 @@ private:
   std::map<const unsigned int, const double> isotropic_bcs;
   bool incident_bcs = false;
 
-  std::vector<unsigned int> material_ids;
-  std::vector<double> material_sigma_t;
-  std::vector<double> material_sigma_s;
-  std::vector<double> material_src;
+  std::vector<unsigned int> material_ids = {};
+  std::vector<double> material_sigma_t = {};
+  std::vector<double> material_sigma_s = {};
+  std::vector<double> material_src = {};
   bool scattering = false;
 
   // Input perpendicular incident flux boundary conditions
-  std::vector<unsigned int> perpendicular_boundary_ids;
-  std::vector<double> perpendicular_boundary_fluxes;
+  std::vector<unsigned int> perpendicular_boundary_ids = {};
+  std::vector<double> perpendicular_boundary_fluxes = {};
   // Input isotropic incident flux boundary conditions
-  std::vector<unsigned int> isotropic_boundary_ids;
-  std::vector<double> isotropic_boundary_fluxes;
+  std::vector<unsigned int> isotropic_boundary_ids = {};
+  std::vector<double> isotropic_boundary_fluxes = {};
 };
 } // namespace SNProblem
 

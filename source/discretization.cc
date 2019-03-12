@@ -14,13 +14,13 @@ using namespace dealii;
 Discretization::Discretization()
   : ParameterAcceptor("Discretization"), mapping(), fe(1), dof_handler(triangulation)
 {
-  aq_order = 10;
+  // Angular quadrature order (default: 10)
   add_parameter("aq_order", aq_order);
 
-  uniform_refinement = 0;
+  // Mesh uniform refinement levels (default: 0)
   add_parameter("uniform_refinement", uniform_refinement);
 
-  renumber = true;
+  // Enable renumbering (default: true)
   add_parameter("renumber", renumber);
 }
 
