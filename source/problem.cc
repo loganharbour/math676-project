@@ -5,10 +5,16 @@ namespace SNProblem
 using namespace dealii;
 
 Problem::Problem()
-  : dof_handler(discretization.get_dof_handler()),
+  : ParameterAcceptor("Problem"),
+    dof_handler(discretization.get_dof_handler()),
     materials(description.get_materials()),
     aq(discretization.get_aq())
 {
+  vtu_filename = "output";
+  add_parameter("vtu_filename", vtu_filename);
+
+  source_iteration_tolerance = 1.0e-12;
+  add_parameter("source_iteration_tolerance", source_iteration_tolerance);
 }
 
 void
@@ -52,7 +58,7 @@ Problem::solve()
                 << std::endl;
 
       // If converged, exit
-      if (norm < 1e-12)
+      if (norm < source_iteration_tolerance)
         return;
       // If not converged, copy to old scalar flux
       else
@@ -71,6 +77,7 @@ Problem::run()
 {
   setup();
   solve();
+  output();
 }
 
 } // namespace SNProblem

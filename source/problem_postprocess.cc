@@ -42,7 +42,14 @@ Problem::L2_difference(const Vector<double> & v1, const Vector<double> & v2)
 void
 Problem::output() const
 {
-  std::ofstream output("solution.vtu");
+  if (vtu_filename.length() != 0)
+    output_vtu();
+}
+
+void
+Problem::output_vtu() const
+{
+  std::ofstream output(vtu_filename + ".vtu");
   DataOut<2> data_out;
   data_out.attach_dof_handler(dof_handler);
   data_out.add_data_vector(scalar_flux, "scalar_flux");

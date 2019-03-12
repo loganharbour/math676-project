@@ -28,7 +28,6 @@ main(int argc, char ** argv)
 
     // Run the problem and grab output
     problem.run();
-    problem.output();
   }
   catch (std::exception & exc)
   {

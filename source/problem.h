@@ -5,6 +5,7 @@
 #include "discretization.h"
 #include "material.h"
 
+#include <deal.II/base/parameter_acceptor.h>
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/lac/vector.h>
@@ -23,13 +24,12 @@ using CellInfo = MeshWorker::IntegrationInfo<2>;
 // Forward declarations
 class AngularQuadrature;
 
-class Problem
+class Problem : public ParameterAcceptor
 {
 public:
   Problem();
 
   void run();
-  void output() const;
 
 private:
   void setup();
@@ -52,6 +52,8 @@ private:
   void update_scalar_flux(const double weight, const bool renumber_flux);
 
   double L2_difference(const Vector<double> & v1, const Vector<double> & v2);
+  void output() const;
+  void output_vtu() const;
 
   Description description;
   Discretization discretization;
@@ -73,6 +75,12 @@ private:
   Vector<double> scalar_flux_old;
 
   MeshWorker::Assembler::SystemSimple<SparseMatrix<double>, Vector<double>> assembler;
+
+  /// Vtu output filename
+  std::string vtu_filename;
+
+  /// Source iteration tolerance
+  double source_iteration_tolerance;
 };
 } // namespace SNProblem
 
