@@ -52,8 +52,8 @@ private:
   void solve_gauss_seidel();
   void update_scalar_flux(const double weight, const bool renumber_flux);
 
+  void postprocess() const;
   double L2_difference(const Vector<double> & v1, const Vector<double> & v2);
-  void output() const;
   void output_vtu() const;
 
   Description description;

@@ -40,7 +40,7 @@ Problem::L2_difference(const Vector<double> & v1, const Vector<double> & v2)
 }
 
 void
-Problem::output() const
+Problem::postprocess() const
 {
   if (vtu_filename.length() != 0)
     output_vtu();

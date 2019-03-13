@@ -22,7 +22,7 @@ Problem::run()
 {
   setup();
   solve();
-  output();
+  postprocess();
 }
 
 void
