@@ -73,44 +73,50 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}\frametitle{One-group Linear Boltzmann Equation}
-	Define the spatial domain $\spatial \in \mathbb{R}^2$ in which $\bd$ is on the boundary of $\spatial$. The set of propagation directions $\angular$ is the unit disk.
-	\begin{subequations}
-		\label{eq:boltzmann}
-		\begin{multline}
-			\vo \cdot \nabla \Psi(\vo, \vx) + \sigma_t(\vx) \Psi(\vo, \vx) -\sigma_s(\vx) \Phi(\vx) = q(\vx)\,, \\ \forall (\vo, \vx) \in \angular \times \spatial\,,
-		\end{multline}
-		\begin{equation}
-		\Phi(\vo, \vx) = \Phi^\text{inc} (\vo, \vx)\,, \qquad \forall(\vo, \vx) \in \angular \times \bd\,,\quad \vo \cdot \vn(\vx) < 0\,,
-		\end{equation}
-	\end{subequations}
-	where $\Phi$ is the scalar flux, defined by
-	\[
-		\Phi = \frac{1}{2\pi} \int_{\angular} \Phi(\vo, \vx) d\Omega\,.
-	\]
-\end{frame}
-
-\begin{frame}\frametitle{S$_N$ Discretization}
-	Introduce the S$_N$ discretization, which replaces the angular flux with a discrete angular flux, as
-	\begin{equation}
-		\label{eq:sn_discretization}
-		\psi(\vx) = [\psi_1(\vx), \psi_2(\vx), \ldots \psi_{N_\Omega}(\vx)]^T\,.
-	\end{equation}
-	Introduce a quadrature rule $\{ (\vo_d, \omega_d), d = 1, \ldots, N_\Omega\}$ where $\sum_d \omega_d = 2 \pi$ to cast the linear Boltzmann equation as
+	Define the spatial domain $\spatial \in \mathbb{R}^2$ in which $\bd$ is on the boundary of $\spatial$. The set of propagation directions $\angular$ is the unit disk. Introduce a quadrature rule $\{ (\vo_d, \omega_d), d = 1, \ldots, N_\Omega\}$ where $\sum_d \omega_d = 2 \pi$. The one-group S$_N$ transport equation is then		
 	\begin{subequations}
 		\label{eq:sn_equations}
 		\begin{equation}
-		\label{eq:sn_equations_domain}
-		\vo_d \cdot \nabla \psi_d(\vx) + \sigma_t(\vx) \psi_d(\vx) - \sigma_s(\vx) \phi(\vx) = q(\vx)\,, \qquad \forall \vx \in \spatial
+			\label{eq:sn_equations_domain}
+			\vo_d \cdot \nabla \psi_d(\vx) + \left(\sigma_a(\vx) + \sigma_s(\vx)\right) \psi_d(\vx) - \sigma_s(\vx) \phi(\vx) = q(\vx)\,, \qquad \forall \vx \in \spatial
 		\end{equation}
 		\begin{equation}
-		\label{eq:sn_equations_boundary}
-		\psi_d(\vx) = \Psi^\text{inc}_j (\vx)\,, \qquad \forall \vx \in \bd\,,~ \vo_d \cdot \vn(\vx) < 0\,, 
+			\label{eq:sn_equations_boundary}
+			\psi_d(\vx) = \psi^\text{inc}_d (\vx)\,, \qquad \forall \vx \in \bd\,,\quad \vo_d \cdot \vn(\vx) < 0\,, 
 		\end{equation}
 	\end{subequations}
-	where the discrete scalar flux, $\phi$, is
+	where $\phi$ is the discrete scalar flux, defined by
 	\[
 		\phi(\vx) = \frac{1}{2\pi} \sum_{d = 1}^{N_\Omega} w_j \psi_j(\vx)\,.
 	\]
+	$\sigma_a$ represents a probability of particle absorption and $\sigma_s$ represents a probability of radiation scattering. For convenience, define $\sigma_t = \sigma_a + \sigma_s$.
+\end{frame}
+
+\begin{frame}\frametitle{Problem: Lots of scattering}
+	We commonly solve Eq. \eqref{eq:sn_equations} by \textit{source iteration}, a form of Richardson iteration. Cast Eq. \eqref{eq:sn_equations} with iterative index $\ell$ as
+	\begin{equation}
+		\label{eq:source-iteation}
+		\vo_d \cdot \nabla \psi_d^{(\ell + 1)} + \sigma_t \psi_d^{(\ell + 1)} = \sigma_s \phi^{(\ell)} + q\,,
+	\end{equation}
+	where $\ell$ is the iterative index, $\psi_d^{(0)} = \phi^{(0)} = \vec{0}$. After solving each direction, $d$, for an iteration $\ell$ in Eq. \eqref{eq:source-iteation}, update the scalar flux with
+	\[
+		\phi^{(\ell + 1)} = \frac{1}{2\pi} \sum_{d = 1}^{N_\Omega} w_d \psi_d^{(\ell + 1)}\,.
+	\]
+	$\psi^{(\ell + 1)}$ is the particles that have scattered at most $\ell$ times. Recall that $\sigma_t = \sigma_s + \sigma_a$. As $\sigma_s / \sigma_t \to 1$, particles scatter more before they are absorbed $\rightarrow$ \textbf{\textcolor{Maroon}{the number of source iterations becomes significant!}}
+\end{frame}
+
+\begin{frame}\frametitle{Example: Lots of scattering}
+	Introduce $\spatial = [0, 10]^2$, $N_\Omega = 20$, $q = 1$, $\sigma_a + \sigma_s = \sigma_t = 100$, and $64^2$ elements. Increase the scattering ratio, $\sigma_s / \sigma_t$ and observe results.
+
+	\begin{figure}[H]
+		\centering
+		\begin{subfigure}[t]{0.48\textwidth}
+				\includegraphics[width=\linewidth]{plots/scattering_norms}
+		\end{subfigure}
+		\begin{subfigure}[t]{0.48\textwidth}
+			\includegraphics[width=\linewidth]{plots/scattering_times}
+		\end{subfigure}
+	\end{figure}
 \end{frame}
 
 \end{document}
