@@ -4,9 +4,6 @@
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/meshworker/simple.h>
 
-#include <fstream>
-#include <string>
-
 namespace SNProblem
 {
 using namespace dealii;
@@ -22,13 +19,16 @@ Discretization::Discretization()
 
   // Enable renumbering (default: true)
   add_parameter("renumber", renumber);
+
+  // Generate a hyper cube mesh (default: {0, 10}); empty if no hypercube generation
+  add_parameter("hypercube_bounds", hypercube_bounds);
 }
 
 void
 Discretization::setup()
 {
-  GridGenerator::hyper_cube(triangulation, 0, 10);
-  triangulation.refine_global(uniform_refinement);
+  // Generate the mesh depending on user inputs
+  generate_mesh();
 
   // Distribute degrees of freedom
   dof_handler.distribute_dofs(fe);
@@ -60,6 +60,21 @@ Discretization::setup()
 }
 
 void
+Discretization::generate_mesh()
+{
+  if (hypercube_bounds.size() != 0 && hypercube_bounds.size() != 2)
+    throw ExcMessage("hypercube_bounds must be of size 2 (lower and upper bounds)");
+  if (hypercube_bounds.size() == 0)
+    throw ExcMessage("hypercube_bounds must be set (no other mesh currently supported)");
+
+  // Generate hyper cube
+  GridGenerator::hyper_cube(triangulation, hypercube_bounds[0], hypercube_bounds[1]);
+
+  // Refine if requested
+  triangulation.refine_global(uniform_refinement);
+}
+
+void
 Discretization::get_material_ids(std::set<unsigned int> & material_ids) const
 {
   material_ids.clear();
@@ -73,4 +88,5 @@ Discretization::renumber_dofs(const unsigned int half)
 {
   dof_handler.renumber_dofs(renumberings[half]);
 }
+
 } // namespace SNProblem

@@ -23,7 +23,6 @@ public:
   void get_material_ids(std::set<unsigned int> & material_ids) const;
   void renumber_dofs(const unsigned int h);
   void setup();
-  void setup_renumbering();
 
   const AngularQuadrature & get_aq() const { return aq; }
   const DoFHandler<2> & get_dof_handler() const { return dof_handler; }
@@ -36,7 +35,7 @@ public:
   MeshWorker::IntegrationInfoBox<2> info_box;
 
 private:
-  void compare(std::vector<unsigned int> & num1, std::vector<unsigned int> & num2);
+  void generate_mesh();
 
   Triangulation<2> triangulation;
   const MappingQ1<2> mapping;
@@ -47,17 +46,19 @@ private:
   // The angular quadrature object
   AngularQuadrature aq;
 
+  // Renumberings between half ranges (if enabled)
+  std::vector<std::vector<unsigned int>> renumberings;
+
   // Angular quadrature order
   unsigned int aq_order = 10;
   // Mesh uniform refinements
   unsigned int uniform_refinement = 0;
   // Whether or not to renumber
   bool renumber = true;
-
-  // Renumberings between half ranges (if enabled)
-  std::vector<std::vector<unsigned int>> renumberings;
-
+  // Hyper cube mesh bounds
+  std::vector<double> hypercube_bounds = {0, 10};
 };
+
 } // namespace SNProblem
 
 #endif // DISCRETIZATION_H
