@@ -13,6 +13,9 @@ Problem::Problem()
   // .vtu output filename (default: output); no output if empty
   add_parameter("vtu_filename", vtu_filename);
 
+  // *.csv output filename for problem residuals; no output if empty (default)
+  add_parameter("residual_filename", residual_filename);
+  
   // Source iteration tolerance (defaut: 1e-12)
   add_parameter("source_iteration_tolerance", source_iteration_tolerance);
 }
@@ -65,6 +68,7 @@ Problem::solve()
     if (description.has_scattering())
     {
       const double norm = L2_difference(scalar_flux, scalar_flux_old);
+      residuals.push_back(norm);
       std::cout << "Source iteration " << l << " norm: " << std::scientific << std::setprecision(2)
                 << norm << std::endl
                 << std::endl;

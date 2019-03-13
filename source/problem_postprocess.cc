@@ -44,6 +44,9 @@ Problem::postprocess() const
 {
   if (vtu_filename.length() != 0)
     output_vtu();
+
+  if (residual_filename.length() != 0)
+    saveVector(residuals, residual_filename + ".csv");
 }
 
 void
@@ -57,4 +60,14 @@ Problem::output_vtu() const
   data_out.write_vtu(output);
 }
 
+template <typename T>
+void
+Problem::saveVector(const std::vector<T> & v, const std::string filename) const
+{
+  std::ofstream f;
+  f.open(filename);
+  for (unsigned int i = 0; i < v.size(); ++i)
+    f << std::scientific << v[i] << std::endl;
+  f.close();
+}
 }

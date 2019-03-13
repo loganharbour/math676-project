@@ -56,6 +56,9 @@ private:
   double L2_difference(const Vector<double> & v1, const Vector<double> & v2);
   void output_vtu() const;
 
+  template <typename T>
+  void saveVector(const std::vector<T> & v, const std::string filename) const;
+
   Description description;
   Discretization discretization;
 
@@ -77,8 +80,13 @@ private:
 
   MeshWorker::Assembler::SystemSimple<SparseMatrix<double>, Vector<double>> assembler;
 
+  /// Source iteration residuals
+  std::vector<double> residuals;
+
   /// Vtu output filename
   std::string vtu_filename = "output";
+  /// Residual output filename
+  std::string residual_filename = "";
   /// Source iteration tolerance
   double source_iteration_tolerance = 1.0e-12;
 };
