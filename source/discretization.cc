@@ -79,8 +79,7 @@ Discretization::get_material_ids(std::set<unsigned int> & material_ids) const
 {
   material_ids.clear();
   for (const auto & cell : dof_handler.active_cell_iterators())
-    if (material_ids.find(cell->material_id()) == material_ids.end())
-      material_ids.insert(cell->material_id());
+    material_ids.insert(cell->material_id());
 }
 
 void
