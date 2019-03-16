@@ -51,6 +51,8 @@
 \institute[]{Department of Nuclear Engineering \\ Texas A\&M University}
 \date[March 20, 2019]
 
+\newcommand{\pinp}[2]{\left(#1,#2\right)}
+
 \begin{document}
 
 {
@@ -67,33 +69,21 @@
 \end{frame}
 }
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Introduction}
-\subsection{}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \begin{frame}\frametitle{One-group Linear Boltzmann Equation}
-	Define the spatial domain $\spatial \in \mathbb{R}^2$ in which $\bd$ is on the boundary of $\spatial$. The set of propagation directions $\angular$ is the unit disk. Introduce a quadrature rule $\{ (\vo_d, \omega_d), d = 1, \ldots, N_\Omega\}$ where $\sum_d \omega_d = 2 \pi$. The one-group S$_N$ transport equation is then		
-	\begin{subequations}
-		\label{eq:sn_equations}
-		\begin{equation}
-			\label{eq:sn_equations_domain}
-			\vo_d \cdot \nabla \psi_d(\vx) + \left(\sigma_a(\vx) + \sigma_s(\vx)\right) \psi_d(\vx) - \sigma_s(\vx) \phi(\vx) = q(\vx)\,, \qquad \forall \vx \in \spatial
-		\end{equation}
-		\begin{equation}
-			\label{eq:sn_equations_boundary}
-			\psi_d(\vx) = \psi^\text{inc}_d (\vx)\,, \qquad \forall \vx \in \bd\,,\quad \vo_d \cdot \vn(\vx) < 0\,, 
-		\end{equation}
-	\end{subequations}
-	where $\phi$ is the discrete scalar flux, defined by
-	\[
-		\phi(\vx) = \frac{1}{2\pi} \sum_{d = 1}^{N_\Omega} w_j \psi_j(\vx)\,.
-	\]
-	$\sigma_a$ represents a probability of particle absorption and $\sigma_s$ represents a probability of radiation scattering. For convenience, define $\sigma_t = \sigma_a + \sigma_s$.
+	Begin with the one-group S$_N$ transport equation for a single direction $d$ (neglecting boundary conditions for simplicity), as	
+	\begin{equation}
+		\label{eq:boltzmann}
+		\vo_d \cdot \nabla \psi_d(\vx) + \left(\sigma_a(\vx) + \sigma_s(\vx)\right) \psi_d(\vx) - \frac{\sigma_s(\vx)}{2\pi} \sum_{d = 1}^{N_\Omega} \omega_d \psi_d(\vx) = q(\vx)\,,
+	\end{equation}
+	where $\sigma_a$ represents a probability of particle absorption and $\sigma_s$ represents a probability of radiation scattering. Let $\mathbb{T}_h$ be the set of all cells of the triangulation in a discontinuous approximation space. The DG weak form with test function $v_d$ is
+	\begin{multline}
+		\sum_{K \in \mathbb{T}_h} \Big[ \pinp{-\vo_d \cdot \nabla v_d}{\psi_d}_K + \pinp{\psi_d^+ \vo_d \cdot \vn}{v_d}_{\delta K} + \pinp{\sigma_t \psi_d}{v_d}_K  \\ - \pinp{\sigma_s \phi}{v_d}_K = \pinp{q}{v_d}_K\Big]\,,
+	\end{multline}
+	where $\phi$ is the \textit{scalar flux}, $\phi = \frac{1}{2\pi} \sum_d^{N_\Omega} \omega_d \psi_d$, and $\psi_d^+$ is the upwind value of $\psi_d$ (the value from the side of the face in which $\vo \cdot \vn \geq 0$).
 \end{frame}
 
-\begin{frame}\frametitle{Problem: Lots of scattering}
-	We commonly solve Eq. \eqref{eq:sn_equations} by \textit{source iteration}, a form of Richardson iteration. Cast Eq. \eqref{eq:sn_equations} with iterative index $\ell$ as
+\begin{frame}\frametitle{Issue: Source Iteration}
+	We commonly solve the transport equation by \textit{source iteration}, a form of Richardson iteration. Cast Eq. \eqref{eq:boltzmann} with iterative index $\ell$ as
 	\begin{equation}
 		\label{eq:source-iteation}
 		\vo_d \cdot \nabla \psi_d^{(\ell + 1)} + \sigma_t \psi_d^{(\ell + 1)} = \sigma_s \phi^{(\ell)} + q\,,
@@ -102,10 +92,10 @@
 	\[
 		\phi^{(\ell + 1)} = \frac{1}{2\pi} \sum_{d = 1}^{N_\Omega} w_d \psi_d^{(\ell + 1)}\,.
 	\]
-	$\psi^{(\ell + 1)}$ is the particles that have scattered at most $\ell$ times. Recall that $\sigma_t = \sigma_s + \sigma_a$. As $\sigma_s / \sigma_t \to 1$, particles scatter more before they are absorbed $\rightarrow$ \textbf{\textcolor{Maroon}{the number of source iterations becomes significant!}}
+	$\psi^{(\ell + 1)}$ is the particles that have scattered at most $\ell$ times. As $\sigma_s / \sigma_t \to 1$, particles scatter more before they are absorbed $\rightarrow$ \textbf{\textcolor{Maroon}{the number of source iterations becomes significant!}} This problem becomes the goal of this work: introduce a diffusion problem as a preconditioner for Eq. \eqref{eq:source-iteation}.
 \end{frame}
 
-\begin{frame}\frametitle{Example: Lots of scattering}
+\begin{frame}\frametitle{Example: Lots of Scattering}
 	Introduce $\spatial = [0, 10]^2$, $N_\Omega = 20$, $q = 1$, $\sigma_a + \sigma_s = \sigma_t = 100$, and $64^2$ elements. Increase the scattering ratio, $\sigma_s / \sigma_t$ and observe results.
 
 	\begin{figure}[H]
@@ -119,4 +109,10 @@
 	\end{figure}
 \end{frame}
 
+\begin{frame}\frametitle{Implementation Update}
+	Thus far...
+	\begin{itemize}
+		\item I have a working one-group, discontinuous Galerkin, finite element S$_N$ code written in Deal.ii.
+	\end{itemize}
+\end{frame}
 \end{document}
