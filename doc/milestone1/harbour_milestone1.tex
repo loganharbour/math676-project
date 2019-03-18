@@ -121,25 +121,43 @@
 \begin{frame}\frametitle{Diffusion Acceleration}
 	\begin{minipage}{0.45\linewidth}
 		\begin{itemize}
-			\item The source iteration process will converge quickly whenever particles scatter just a few times on average before being absorbed or escaping.
-			\item It can converge very slowly in \textit{diffusive} problem, as particles scatter an arbitrary number of times on average before being absorbed or escaping.
+			\item Simple algebraic manipulations can show that the error in $\psi^{\ell + 1}$ satisfies the transport equation with a source equal to:
+			\[
+				R^{\ell + 1} = \frac{\sigma_s}{2\pi} (\phi^{\ell + 1} - \phi^\ell)\,.
+			\]
 		\end{itemize}
 	\end{minipage}
 	\hfill
-	\begin{minipage}{0.50\linewidth}
+	\begin{minipage}{0.48\linewidth}
 		\includegraphics[width=\linewidth]{images/eigenvalues}
 	\end{minipage}
+	\vspace{0.2cm}
+	\begin{itemize}
+		\item A Fourier analysis shows (above and to the right) that the transport equation with a diffusion approximation attenuates the errors most poorly attenuated by the transport sweep.
+		\item \textbf{\textcolor{Maroon}{Project goal:}} cast the transport problem for the error in $\psi^{\ell + 1}$ using the diffusion approximation as an acceleration to source iteration.
+		\begin{itemize}
+			\footnotesize
+			\item This requires an S$_N$ solver (done) and a diffusion solver (starting).
+		\end{itemize}
+	\end{itemize}
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{frame}\frametitle{Project Progress and Future Goals}
-	\begin{block}{Completed works}
+\begin{frame}\frametitle{So far...}
+	\begin{block}{Completed}
 		\begin{itemize}
 			\item A one-group, 2D neutron transport code using the S$_N$ approximation has been developed using linear discontinuous finite elements in Deal.ii.
 			\item Verified using known constant source solutions and MMS.
 			\item Primarily uses the \texttt{MeshWorker} interface as discussed in step-12.
-			\item Utilizes \texttt{downstream\_renumbering} to precondition the within-direction solve.
+			\item \texttt{downstream\_renumbering} preconditions the within-direction solve.
+		\end{itemize}
+	\end{block}
+	\begin{block}{Frustrations \tiny{(fewer than expected)}}
+		\begin{itemize}
+			\item Discontinuous finite element is new to me. Not like the majority of Deal.ii, \texttt{MeshWorker} took some getting used to.
+			\item I really need to quit spending so much time on architecture...
+			\item S$_N$ transport has specified directions of travel, therefore the discontinuous weak form is somewhat intuitive. This is not the case with diffusion transport, therefore the DFEM weak form isn't as fun.
 		\end{itemize}
 	\end{block}
 \end{frame}
