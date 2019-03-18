@@ -46,7 +46,8 @@
 \newcommand{\bd}{\delta \mathcal{D}} % boundary representation
 \newcommand{\angular}{\mathcal{S}} % angular domain representation
 
-\title[2D S$_N$ with Diffusion Acceleration]{2D S$_N$ with Diffusion Acceleration \\ {\small MATH 676: 1$^\text{st}$ Milestone Presentation}}
+\title[2D S$_N$ with Diffusion Acceleration]{2D S$_N$ with Diffusion Acceleration}
+\subtitle{MATH 676 -- Milestone 1 Presentation}
 \author[L. Harbour]{Logan H. Harbour}
 \institute[]{Department of Nuclear Engineering \\ Texas A\&M University}
 \date[March 20, 2019]
@@ -69,6 +70,8 @@
 \end{frame}
 }
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \begin{frame}\frametitle{One-group Linear Boltzmann Equation}
 	Begin with the one-group S$_N$ transport equation for a single direction $d$ (neglecting boundary conditions for simplicity), as	
 	\begin{equation}
@@ -82,6 +85,8 @@
 	where $\phi$ is the \textit{scalar flux}, $\phi = \frac{1}{2\pi} \sum_d^{N_\Omega} \omega_d \psi_d$, and $\psi_d^+$ is the upwind value of $\psi_d$ (the value from the side of the face in which $\vo \cdot \vn \geq 0$).
 \end{frame}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \begin{frame}\frametitle{Issue: Source Iteration}
 	We commonly solve the transport equation by \textit{source iteration}, a form of Richardson iteration. Cast Eq. \eqref{eq:boltzmann} with iterative index $\ell$ as
 	\begin{equation}
@@ -94,6 +99,8 @@
 	\]
 	$\psi^{(\ell + 1)}$ is the particles that have scattered at most $\ell$ times. As $\sigma_s / \sigma_t \to 1$, particles scatter more before they are absorbed $\rightarrow$ \textbf{\textcolor{Maroon}{the number of source iterations becomes significant!}} This problem becomes the goal of this work: introduce a diffusion problem as a preconditioner for Eq. \eqref{eq:source-iteation}.
 \end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}\frametitle{Example: Lots of Scattering}
 	Introduce $\spatial = [0, 10]^2$, $N_\Omega = 20$, $q = 1$, $\sigma_a + \sigma_s = \sigma_t = 100$, and $64^2$ elements. Increase the scattering ratio, $\sigma_s / \sigma_t$ and observe results.
@@ -109,10 +116,25 @@
 	\end{figure}
 \end{frame}
 
-\begin{frame}\frametitle{Implementation Update}
-	Thus far...
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}\frametitle{Diffusion Acceleration}
 	\begin{itemize}
-		\item I have a working one-group, discontinuous Galerkin, finite element S$_N$ code written in Deal.ii.
+		\item The source iteration process will converge quickly whenever particles scatter just a few times on average before being absorbed or escaping.
+		\item It can converge very slowly in \textit{diffusive} problem, as particles scatter an arbitrary number of times on average before being absorbed or escaping.
 	\end{itemize}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}\frametitle{Project Progress and Future Goals}
+	\begin{block}{Completed works}
+		\begin{itemize}
+			\item A one-group, 2D neutron transport code using the S$_N$ approximation has been developed using linear discontinuous finite elements in Deal.ii.
+			\item Verified using known constant source solutions and MMS.
+			\item Primarily uses the \texttt{MeshWorker} interface as discussed in step-12.
+			\item Utilizes \texttt{downstream\_renumbering} to precondition the within-direction solve.
+		\end{itemize}
+	\end{block}
 \end{frame}
 \end{document}
