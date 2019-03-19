@@ -46,9 +46,9 @@
 \newcommand{\bd}{\delta \mathcal{D}} % boundary representation
 \newcommand{\angular}{\mathcal{S}} % angular domain representation
 
-\title[2D S$_N$ with Diffusion Acceleration]{2D S$_N$ with Diffusion Acceleration}
+\title[2D S$_N$ with Diffusion Acceleration]{2D S$_N$ Radiation Transport with Diffusion Acceleration}
 \subtitle{MATH 676 -- Milestone 1 Presentation}
-\author[L. Harbour]{Logan H. Harbour}
+\author[Logan Harbour]{Logan H. Harbour}
 \institute[]{Department of Nuclear Engineering \\ Texas A\&M University}
 \date[March 20, 2019]
 
@@ -102,24 +102,26 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{frame}\frametitle{Example: Lots of Scattering}
+\begin{frame}\frametitle{Lots of Scattering}
 	Introduce $\spatial = [0, 10]^2$, $N_\Omega = 20$, $q = 1$, $\sigma_a + \sigma_s = \sigma_t = 100$, and $64^2$ elements. Increase the scattering ratio, $\sigma_s / \sigma_t$ and observe results.
-
 	\begin{figure}[H]
 		\centering
-		\begin{subfigure}[t]{0.48\textwidth}
+		\hfill
+		\begin{subfigure}[t]{0.46\textwidth}
 				\includegraphics[width=\linewidth]{plots/scattering_norms}
 		\end{subfigure}
-		\begin{subfigure}[t]{0.48\textwidth}
+		\hfill
+		\begin{subfigure}[t]{0.46\textwidth}
 			\includegraphics[width=\linewidth]{plots/scattering_times}
 		\end{subfigure}
+		\hfill
 	\end{figure}
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}\frametitle{Diffusion Acceleration}
-	\begin{minipage}{0.45\linewidth}
+	\begin{minipage}{0.48\linewidth}
 		\begin{itemize}
 			\item Simple algebraic manipulations can show that the error in $\psi^{\ell + 1}$ satisfies the transport equation with a source equal to:
 			\[
@@ -129,15 +131,17 @@
 	\end{minipage}
 	\hfill
 	\begin{minipage}{0.48\linewidth}
-		\includegraphics[width=\linewidth]{images/eigenvalues}
+		\includegraphics[width=\linewidth]{plots/eigenvalues}
 	\end{minipage}
-	\vspace{0.2cm}
+	\vspace{-0.2cm}
 	\begin{itemize}
-		\item A Fourier analysis shows (above and to the right) that the transport equation with a diffusion approximation attenuates the errors most poorly attenuated by the transport sweep.
+		\item A Fourier analysis shows (above and to the right for $\sigma_s / \sigma_t = 1$) that the transport equation with a diffusion approximation attenuates the errors most poorly attenuated by the transport sweep.
+		\vspace{0.05cm}
 		\item \textbf{\textcolor{Maroon}{Project goal:}} cast the transport problem for the error in $\psi^{\ell + 1}$ using the diffusion approximation as an acceleration to source iteration.
 		\begin{itemize}
 			\footnotesize
-			\item This requires an S$_N$ solver (done) and a diffusion solver (starting).
+			\vspace{0.05cm}
+			\item This requires an S$_N$ solver (complete) and a diffusion solver (starting).
 		\end{itemize}
 	\end{itemize}
 \end{frame}
@@ -161,4 +165,11 @@
 		\end{itemize}
 	\end{block}
 \end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}\frametitle{Coming soon \tiny{(maybe? hopefully?)}}
+
+\end{frame}
+
 \end{document}
