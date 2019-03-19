@@ -87,7 +87,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{frame}\frametitle{Issue: Source Iteration}
+\begin{frame}\frametitle{Source Iteration}
 	We commonly solve the transport equation by \textit{source iteration}, a form of Richardson iteration. Cast Eq. \eqref{eq:boltzmann} with iterative index $\ell$ as
 	\begin{equation}
 		\label{eq:source-iteation}
@@ -164,6 +164,22 @@
 			\item S$_N$ transport has specified directions of travel, therefore the discontinuous weak form is somewhat intuitive. This is not the case with diffusion transport, therefore the DFEM weak form isn't as fun.
 		\end{itemize}
 	\end{block}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}\frametitle{Aside: Downstream renumbering}
+	\begin{minipage}{0.52\linewidth}
+		\begin{itemize}
+			\item The S$_N$ problem with upwind approximation $\rightarrow$ matrix solves can be local if solved in the upstream direction.
+			\item Mixing \texttt{downstream()} with a Gauss-Seidel preconditioner mimics this behavior. Otherwise, solve with Richardson iteration.
+			\item Consider a $[0,10]^2$ domain, $N_\Omega = 20, q = 1, \sigma_s = 10, \sigma_t = 100, 25^2$ elements. Refine the mesh uniformly and observe effect of renumbering DoFs based on direction.
+		\end{itemize}
+	\end{minipage}
+	\hfill
+	\begin{minipage}{0.45\linewidth}
+		\includegraphics[width=\linewidth]{plots/renumbering}
+	\end{minipage}
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
