@@ -1,5 +1,5 @@
-#ifndef SNPROBLEM_H
-#define SNPROBLEM_H
+#ifndef DSA_PROBLEM
+#define DSA_PROBLEM
 
 #include <deal.II/base/parameter_acceptor.h>
 #include <deal.II/meshworker/loop.h>
@@ -19,42 +19,17 @@ using namespace dealii;
 using DoFInfo = MeshWorker::DoFInfo<2>;
 using CellInfo = MeshWorker::IntegrationInfo<2>;
 
-class SNProblem : public ParameterAcceptor
+class DSAProblem : public ParameterAcceptor
 {
 public:
-  SNProblem(Problem & problem);
+  DSAProblem(Problem & problem);
 
-  /// Initial setup for the SNProblem
+  /// Initial setup for the DSAProblem
   void setup();
 
-  /// Solve all directions
-  bool solve_directions(const unsigned int l);
-
-  const std::vector<double> & get_residuals() const { return residuals; }
+  bool is_enabled() const { return enabled; }
 
 private:
-
-  /// Solve and fill scalar flux for angular direction d
-  void solve_direction(const unsigned int d);
-
-  /// Assemble LHS and RHS for angular direction d
-  void assemble_direction(const Tensor<1, 2> & dir, const bool renumber_flux);
-  /// Cell integration term for MeshWorker
-  void integrate_cell(DoFInfo & dinfo,
-                      CellInfo & info,
-                      const Tensor<1, 2> dir,
-                      const bool renumber_flux);
-  /// Boundary integration term for MeshWorker
-  void integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> dir);
-  /// Face integration term for MeshWorker
-  void integrate_face(DoFInfo & dinfo1,
-                      DoFInfo & dinfo2,
-                      CellInfo & info1,
-                      CellInfo & info2,
-                      const Tensor<1, 2> dir);
-
-  /// Compute the L2 norm of (v1 - v2)
-  double L2_difference(const Vector<double> & v1, const Vector<double> & v2);
 
   /// Access to the description in the Problem
   const Description & description;
@@ -80,12 +55,9 @@ private:
   /// Assembler used by the MeshWorker::loop
   MeshWorker::Assembler::SystemSimple<SparseMatrix<double>, Vector<double>> assembler;
 
-  /// Source iteration residuals
-  std::vector<double> residuals;
-
-  /// Source iteration tolerance
-  double source_iteration_tolerance = 1.0e-12;
+  /// Whether or not DSA is enabled
+  bool enabled = true;
 };
 } // namespace RadProblem
 
-#endif // SNPROBLEM_H
+#endif // DSA_PROBLEM

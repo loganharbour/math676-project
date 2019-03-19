@@ -1,5 +1,8 @@
 #include "snproblem.h"
 
+#include "description.h"
+#include "discretization.h"
+#include "material.h"
 #include "problem.h"
 
 #include <deal.II/lac/precondition_block.h>
@@ -83,14 +86,35 @@ SNProblem::solve_direction(const unsigned int d)
   // Assemble the system
   assemble_direction(aq.dir(d), renumber_flux);
 
-  // Solve the system
-  if (discretization.do_renumber())
-    solve_gauss_seidel();
+  // Solve the system with renumbering disabled
+  if (!discretization.do_renumber())
+  {
+    SolverControl solver_control(1000, 1e-12);
+    SolverRichardson<> solver(solver_control);
+    PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
+    preconditioner.initialize(matrix, discretization.get_fe().dofs_per_cell);
+    solver.solve(matrix, solution, rhs, preconditioner);
+    std::cout << " - converged after " << solver_control.last_step() << " iterations " << std::endl;
+  }
+  // Solve the system with renumbering enabled
   else
-    solve_richardson();
+  {
+    PreconditionBlockSOR<SparseMatrix<double>> preconditioner;
+    preconditioner.initialize(matrix, discretization.get_fe().dofs_per_cell);
+    preconditioner.step(solution, rhs);
+    std::cout << std::endl;
+  }
 
   // Update scalar flux at each node (weighed by angular weight)
-  update_scalar_flux(aq.w(d), renumber_flux);
+  const double weight = aq.w(d);
+  if (renumber_flux)
+  {
+    const auto & to_ref = discretization.get_ref_renumbering();
+    for (unsigned int i = 0; i < dof_handler.n_dofs(); ++i)
+      scalar_flux[i] += weight * solution[to_ref[i]];
+  }
+  else
+    scalar_flux.add(weight, solution);
 }
 
 void
@@ -271,39 +295,6 @@ SNProblem::integrate_face(
       for (unsigned int i = 0; i < fe_v_in.dofs_per_cell; ++i)
         uout_vin_matrix(i, j) -= coeff * fe_v_in.shape_value(i, q);
     }
-}
-
-void
-SNProblem::solve_richardson()
-{
-  SolverControl solver_control(1000, 1e-12);
-  SolverRichardson<> solver(solver_control);
-  PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
-  preconditioner.initialize(matrix, discretization.get_fe().dofs_per_cell);
-  solver.solve(matrix, solution, rhs, preconditioner);
-  std::cout << " - converged after " << solver_control.last_step() << " iterations " << std::endl;
-}
-
-void
-SNProblem::solve_gauss_seidel()
-{
-  PreconditionBlockSOR<SparseMatrix<double>> preconditioner;
-  preconditioner.initialize(matrix, discretization.get_fe().dofs_per_cell);
-  preconditioner.step(solution, rhs);
-  std::cout << std::endl;
-}
-
-void
-SNProblem::update_scalar_flux(const double weight, const bool renumber_flux)
-{
-  if (renumber_flux)
-  {
-    const auto & to_ref = discretization.get_ref_renumbering();
-    for (unsigned int i = 0; i < dof_handler.n_dofs(); ++i)
-      scalar_flux[i] += weight * solution[to_ref[i]];
-  }
-  else
-    scalar_flux.add(weight, solution);
 }
 
 double

@@ -1,8 +1,6 @@
 #ifndef MATERIAL_H
 #define MATERIAL_H
 
-#include <iostream>
-
 namespace RadProblem
 {
 class Material

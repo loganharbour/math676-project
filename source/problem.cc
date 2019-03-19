@@ -1,15 +1,18 @@
 #include "problem.h"
 
+#include "material.h"
+
+#include <deal.II/numerics/data_out.h>
+
 namespace RadProblem
 {
 using namespace dealii;
 
 Problem::Problem()
   : ParameterAcceptor("Problem"),
-    dof_handler(discretization.get_dof_handler()),
-    materials(description.get_materials()),
-    aq(discretization.get_aq()),
-    sn(*this)
+    sn(*this),
+    dsa(*this),
+    dof_handler(discretization.get_dof_handler())
 {
   // .vtu output filename (default: output); no output if empty
   add_parameter("vtu_filename", vtu_filename);
@@ -36,12 +39,13 @@ Problem::setup()
   discretization.get_material_ids(mesh_material_ids);
   description.setup(mesh_material_ids);
 
-  // Setup SN problem
-  sn.setup();
-
   // Resize scalar flux variables
   scalar_flux.reinit(dof_handler.n_dofs());
   scalar_flux_old.reinit(dof_handler.n_dofs());
+
+  // Setup additional problems
+  sn.setup();
+  dsa.setup();
 }
 
 void

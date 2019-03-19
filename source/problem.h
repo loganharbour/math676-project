@@ -3,18 +3,13 @@
 
 #include "description.h"
 #include "discretization.h"
-#include "material.h"
+#include "dsaproblem.h"
 #include "snproblem.h"
 
 #include <deal.II/base/parameter_acceptor.h>
-#include <deal.II/dofs/dof_handler.h>
 #include <deal.II/lac/vector.h>
-#include <deal.II/meshworker/loop.h>
-#include <deal.II/meshworker/simple.h>
-#include <deal.II/numerics/data_out.h>
-#include <fstream>
 
-#include <map>
+#include <fstream>
 
 namespace RadProblem
 {
@@ -22,6 +17,7 @@ using namespace dealii;
 
 // Forward declarations
 class AngularQuadrature;
+class Material;
 
 class Problem : public ParameterAcceptor
 {
@@ -46,20 +42,24 @@ public:
   }
 
 private:
+  /// Initial setup for the Problem
   void setup();
-
+  /// Primary solver for the Problem
   void solve();
-
-  void postprocess() const;
+  /// Build and save .vtu output
   void output_vtu() const;
 
+  /// Problem description that holds material properties, boundary conditions, etc
   Description description;
+  /// Problem discretization that holds the dof_handler and triangulation
   Discretization discretization;
-
-  const DoFHandler<2> & dof_handler;
-  const std::map<const unsigned int, const Material> & materials;
-  const AngularQuadrature & aq;
+  /// The SNProblem, which computes the SN quantities
   SNProblem sn;
+  /// The DSAProblem, which accelerates the source iteration
+  DSAProblem dsa;
+
+  /// Access to the dof_handler in the Discretization
+  const DoFHandler<2> & dof_handler;
 
   /// Finite element representation of the scalar flux at the current iteration
   Vector<double> scalar_flux;
