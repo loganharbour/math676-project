@@ -7,7 +7,7 @@
 #include <math.h>
 #include <algorithm>
 
-namespace SNProblem
+namespace RadProblem
 {
 class AngularQuadrature
 {
@@ -46,6 +46,6 @@ private:
   /// Quadrature weights
   std::vector<double> weights;
 };
-} // namespace SNProblem
+} // namespace RadProblem
 
 #endif /* ANGULARQUADRATURE_H */

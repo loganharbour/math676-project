@@ -6,7 +6,7 @@
 #include <deal.II/base/parameter_acceptor.h>
 #include <iostream>
 
-using namespace SNProblem;
+using namespace RadProblem;
 
 int
 main(int argc, char ** argv)

@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <deal.II/base/exceptions.h>
 
-namespace SNProblem
+namespace RadProblem
 {
 using namespace dealii;
 
@@ -93,4 +93,4 @@ Description::setup_boundary_conditions()
     incident_bcs = true;
 }
 
-} // namespace SNProblem
+} // namespace RadProblem

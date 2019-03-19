@@ -11,7 +11,7 @@
 #include <deal.II/lac/sparsity_pattern.h>
 #include <deal.II/meshworker/integration_info.h>
 
-namespace SNProblem
+namespace RadProblem
 {
 using namespace dealii;
 
@@ -59,6 +59,6 @@ private:
   std::vector<double> hypercube_bounds = {0, 10};
 };
 
-} // namespace SNProblem
+} // namespace RadProblem
 
 #endif // DISCRETIZATION_H

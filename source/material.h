@@ -3,7 +3,7 @@
 
 #include <iostream>
 
-namespace SNProblem
+namespace RadProblem
 {
 class Material
 {
@@ -24,6 +24,6 @@ public:
   // Volumetric source term [p/cm^3]
   const double src;
 };
-} // namespace SNProblem
+} // namespace RadProblem
 
 #endif /* MATERIAL_H */

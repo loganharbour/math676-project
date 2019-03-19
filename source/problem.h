@@ -4,22 +4,21 @@
 #include "description.h"
 #include "discretization.h"
 #include "material.h"
+#include "snproblem.h"
 
 #include <deal.II/base/parameter_acceptor.h>
 #include <deal.II/dofs/dof_handler.h>
-#include <deal.II/lac/sparse_matrix.h>
 #include <deal.II/lac/vector.h>
 #include <deal.II/meshworker/loop.h>
 #include <deal.II/meshworker/simple.h>
+#include <deal.II/numerics/data_out.h>
+#include <fstream>
 
 #include <map>
 
-namespace SNProblem
+namespace RadProblem
 {
 using namespace dealii;
-
-using DoFInfo = MeshWorker::DoFInfo<2>;
-using CellInfo = MeshWorker::IntegrationInfo<2>;
 
 // Forward declarations
 class AngularQuadrature;
@@ -31,33 +30,28 @@ public:
 
   void run();
 
+  const Description & get_description() const { return description; }
+  Discretization & get_discretization() { return discretization; }
+  Vector<double> & get_scalar_flux() { return scalar_flux; }
+  Vector<double> & get_scalar_flux_old() { return scalar_flux_old; }
+
+  template <typename T>
+  static void saveVector(const std::vector<T> & v, const std::string filename)
+  {
+    std::ofstream f;
+    f.open(filename);
+    for (unsigned int i = 0; i < v.size(); ++i)
+      f << std::scientific << v[i] << std::endl;
+    f.close();
+  }
+
 private:
   void setup();
 
   void solve();
 
-  void solve_direction(const unsigned int d);
-  void assemble_direction(const Tensor<1, 2> & dir, const bool renumber_flux);
-  void integrate_cell(DoFInfo & dinfo,
-                      CellInfo & info,
-                      const Tensor<1, 2> dir,
-                      const bool renumber_flux);
-  void integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> dir);
-  void integrate_face(DoFInfo & dinfo1,
-                      DoFInfo & dinfo2,
-                      CellInfo & info1,
-                      CellInfo & info2,
-                      const Tensor<1, 2> dir);
-  void solve_richardson();
-  void solve_gauss_seidel();
-  void update_scalar_flux(const double weight, const bool renumber_flux);
-
   void postprocess() const;
-  double L2_difference(const Vector<double> & v1, const Vector<double> & v2);
   void output_vtu() const;
-
-  template <typename T>
-  void saveVector(const std::vector<T> & v, const std::string filename) const;
 
   Description description;
   Discretization discretization;
@@ -65,31 +59,16 @@ private:
   const DoFHandler<2> & dof_handler;
   const std::map<const unsigned int, const Material> & materials;
   const AngularQuadrature & aq;
-
-  /// System matrix used in solving a single direction
-  SparseMatrix<double> direction_matrix;
-  /// System right hand side used in solving a single direction
-  Vector<double> direction_rhs;
-  /// System solution used in solving a single direction
-  Vector<double> direction_solution;
+  SNProblem sn;
 
   /// Finite element representation of the scalar flux at the current iteration
   Vector<double> scalar_flux;
   /// Finite element representation of the scalar flux at the previous iteration
   Vector<double> scalar_flux_old;
 
-  MeshWorker::Assembler::SystemSimple<SparseMatrix<double>, Vector<double>> assembler;
-
-  /// Source iteration residuals
-  std::vector<double> residuals;
-
   /// Vtu output filename
   std::string vtu_filename = "output";
-  /// Residual output filename
-  std::string residual_filename = "";
-  /// Source iteration tolerance
-  double source_iteration_tolerance = 1.0e-12;
 };
-} // namespace SNProblem
+} // namespace RadProblem
 
 #endif // PROBLEM_H

@@ -4,7 +4,7 @@
 #include <deal.II/base/parameter_acceptor.h>
 #include <map>
 
-namespace SNProblem
+namespace RadProblem
 {
 // Forward declaration
 class Material;
@@ -25,8 +25,8 @@ public:
   {
     return isotropic_bcs;
   }
-  bool has_incident_bcs() { return incident_bcs; }
-  bool has_scattering() { return scattering; }
+  bool has_incident_bcs() const { return incident_bcs; }
+  bool has_scattering() const { return scattering; }
 
 private:
   void setup_materials(const std::set<unsigned int> & mesh_material_ids);
@@ -52,6 +52,6 @@ private:
   std::vector<unsigned int> isotropic_boundary_ids = {};
   std::vector<double> isotropic_boundary_fluxes = {};
 };
-} // namespace SNProblem
+} // namespace RadProblem
 
 #endif // DESCRIPTION_H

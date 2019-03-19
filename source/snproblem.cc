@@ -1,14 +1,74 @@
+#include "snproblem.h"
+
 #include "problem.h"
 
 #include <deal.II/lac/precondition_block.h>
 #include <deal.II/lac/solver_richardson.h>
 
-namespace SNProblem
+namespace RadProblem
 {
 using namespace dealii;
 
+SNProblem::SNProblem(Problem & problem)
+  : ParameterAcceptor("SNProblem"),
+    description(problem.get_description()),
+    discretization(problem.get_discretization()),
+    dof_handler(discretization.get_dof_handler()),
+    materials(description.get_materials()),
+    aq(discretization.get_aq()),
+    scalar_flux(problem.get_scalar_flux()),
+    scalar_flux_old(problem.get_scalar_flux_old())
+{
+  // Source iteration tolerance (defaut: 1e-12)
+  add_parameter("source_iteration_tolerance", source_iteration_tolerance);
+}
+
 void
-Problem::solve_direction(const unsigned int d)
+SNProblem::setup()
+{
+  // Initialize system storage for a single direction
+  rhs.reinit(dof_handler.n_dofs());
+  matrix.reinit(discretization.get_sparsity_pattern());
+  solution.reinit(dof_handler.n_dofs());
+
+  // Pass the matrix and rhs to the assembler
+  assembler.initialize(matrix, rhs);
+}
+
+bool
+SNProblem::solve_directions(const unsigned int l)
+{
+  // Copy to old scalar flux and zero scalar flux for update
+  scalar_flux_old = scalar_flux;
+  scalar_flux = 0;
+
+  // Solve each direction
+  for (unsigned int d = 0; d < aq.n_dir(); ++d)
+    solve_direction(d);
+
+  // Source iteration: check for convergence
+  if (description.has_scattering())
+  {
+    const double norm = L2_difference(scalar_flux, scalar_flux_old);
+    residuals.push_back(norm);
+    std::cout << "Source iteration " << l << " norm: " << std::scientific << std::setprecision(2)
+              << norm << std::endl
+              << std::endl;
+
+    // Return true if converged
+    if (norm < source_iteration_tolerance)
+      return true;
+    // Return false if not converged
+    else
+      return false;
+  }
+  // No scattering: return true for converged
+  else
+    return true;
+}
+
+void
+SNProblem::solve_direction(const unsigned int d)
 {
   std::cout << "Solving direction " << d;
 
@@ -34,22 +94,22 @@ Problem::solve_direction(const unsigned int d)
 }
 
 void
-Problem::assemble_direction(const Tensor<1, 2> & dir, const bool renumber_flux)
+SNProblem::assemble_direction(const Tensor<1, 2> & dir, const bool renumber_flux)
 {
   // Zero lhs and rhs before assembly
-  direction_matrix = 0;
-  direction_rhs = 0;
+  matrix = 0;
+  rhs = 0;
 
   // Lambda functions for passing into MeshWorker::loop
   const auto cell_worker = [&](DoFInfo & dinfo, CellInfo & info) {
-    Problem::integrate_cell(dinfo, info, dir, renumber_flux);
+    SNProblem::integrate_cell(dinfo, info, dir, renumber_flux);
   };
   const auto boundary_worker = [&](DoFInfo & dinfo, CellInfo & info) {
-    Problem::integrate_boundary(dinfo, info, dir);
+    SNProblem::integrate_boundary(dinfo, info, dir);
   };
   const auto face_worker =
       [&](DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2) {
-        Problem::integrate_face(dinfo1, dinfo2, info1, info2, dir);
+        SNProblem::integrate_face(dinfo1, dinfo2, info1, info2, dir);
       };
 
   // Call loop to execute the integration
@@ -66,10 +126,10 @@ Problem::assemble_direction(const Tensor<1, 2> & dir, const bool renumber_flux)
 }
 
 void
-Problem::integrate_cell(DoFInfo & dinfo,
-                        CellInfo & info,
-                        const Tensor<1, 2> dir,
-                        const bool renumber_flux)
+SNProblem::integrate_cell(DoFInfo & dinfo,
+                          CellInfo & info,
+                          const Tensor<1, 2> dir,
+                          const bool renumber_flux)
 {
   const FEValuesBase<2> & fe_v = info.fe_values();
   FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
@@ -121,7 +181,7 @@ Problem::integrate_cell(DoFInfo & dinfo,
 }
 
 void
-Problem::integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> dir)
+SNProblem::integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> dir)
 {
   // Dot product between the direction and the outgoing normal
   const double dir_dot_n = dir * info.fe_values().normal_vector(0);
@@ -180,7 +240,7 @@ Problem::integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2>
 }
 
 void
-Problem::integrate_face(
+SNProblem::integrate_face(
     DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2, const Tensor<1, 2> dir)
 {
   // Dot product between the direction and the outgoing normal of face 1
@@ -213,34 +273,69 @@ Problem::integrate_face(
     }
 }
 
-void Problem::solve_richardson()
+void
+SNProblem::solve_richardson()
 {
   SolverControl solver_control(1000, 1e-12);
   SolverRichardson<> solver(solver_control);
   PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
-  preconditioner.initialize(direction_matrix, discretization.get_fe().dofs_per_cell);
-  solver.solve(direction_matrix, direction_solution, direction_rhs, preconditioner);
+  preconditioner.initialize(matrix, discretization.get_fe().dofs_per_cell);
+  solver.solve(matrix, solution, rhs, preconditioner);
   std::cout << " - converged after " << solver_control.last_step() << " iterations " << std::endl;
 }
 
-void Problem::solve_gauss_seidel()
+void
+SNProblem::solve_gauss_seidel()
 {
   PreconditionBlockSOR<SparseMatrix<double>> preconditioner;
-  preconditioner.initialize(direction_matrix, discretization.get_fe().dofs_per_cell);
-  preconditioner.step(direction_solution, direction_rhs);
+  preconditioner.initialize(matrix, discretization.get_fe().dofs_per_cell);
+  preconditioner.step(solution, rhs);
   std::cout << std::endl;
 }
 
-void Problem::update_scalar_flux(const double weight, const bool renumber_flux)
+void
+SNProblem::update_scalar_flux(const double weight, const bool renumber_flux)
 {
   if (renumber_flux)
   {
     const auto & to_ref = discretization.get_ref_renumbering();
     for (unsigned int i = 0; i < dof_handler.n_dofs(); ++i)
-      scalar_flux[i] += weight * direction_solution[to_ref[i]];
+      scalar_flux[i] += weight * solution[to_ref[i]];
   }
   else
-    scalar_flux.add(weight, direction_solution);
+    scalar_flux.add(weight, solution);
 }
 
-} // namespace SNProblem
+double
+SNProblem::L2_difference(const Vector<double> & v1, const Vector<double> & v2)
+{
+  double value = 0;
+
+  const auto cell_worker = [&](DoFInfo & dinfo, CellInfo & info) {
+    const FEValuesBase<2> & fe_v = info.fe_values();
+    const std::vector<double> & JxW = fe_v.get_JxW_values();
+
+    for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
+    {
+      const double diff_i = v1[dinfo.indices[i]] - v2[dinfo.indices[i]];
+      for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
+        value += std::pow(fe_v.shape_value(i, q) * diff_i, 2) * JxW[q];
+    }
+  };
+
+  // Call loop to execute the integration
+  MeshWorker::DoFInfo<2> dof_info(dof_handler);
+  MeshWorker::loop<2, 2, MeshWorker::DoFInfo<2>, MeshWorker::IntegrationInfoBox<2>>(
+      dof_handler.begin_active(),
+      dof_handler.end(),
+      dof_info,
+      discretization.info_box,
+      cell_worker,
+      NULL,
+      NULL,
+      assembler);
+
+  return value;
+}
+
+} // namespace RadProblem

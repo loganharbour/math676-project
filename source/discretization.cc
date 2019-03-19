@@ -4,7 +4,7 @@
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/meshworker/simple.h>
 
-namespace SNProblem
+namespace RadProblem
 {
 using namespace dealii;
 
@@ -88,4 +88,4 @@ Discretization::renumber_dofs(const unsigned int half)
   dof_handler.renumber_dofs(renumberings[half]);
 }
 
-} // namespace SNProblem
+} // namespace RadProblem

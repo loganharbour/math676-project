@@ -1,7 +1,7 @@
 # Set the name of the project and target:
 SET(TARGET "project")
 
-# SNProblem includes
+# RadProblem includes
 FILE(GLOB_RECURSE TARGET_SRC  "source/*.cc")
 FILE(GLOB_RECURSE TARGET_INC  "source/*.h")
 SET(TARGET_SRC ${TARGET_SRC}  ${TARGET_INC})
