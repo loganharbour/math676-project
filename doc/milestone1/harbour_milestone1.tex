@@ -29,6 +29,8 @@
 
 \usepackage{amsmath}
 \usepackage{amssymb}
+\usepackage{tikz}
+
 % nicer item settings
 \setlist[1]{nolistsep,label=\(\textcolor{Maroon}{\blacksquare}\)}
 \setlist[2]{nolistsep,label=\(\textcolor{Maroon}{\bullet}\)}
@@ -37,6 +39,14 @@
 	label=\protect\usebeamerfont{enumerate item}%
 	\protect\usebeamercolor[fg]{enumerate item}%
 	\insertenumlabel.
+}
+
+\newcommand{\neutranie}{\tikz[baseline=-0.75ex,black]{
+		\draw circle (2mm);
+		\node[fill,circle,inner sep=0.5pt] (left eye) at (135:0.8mm) {};
+		\node[fill,circle,inner sep=0.5pt] (right eye) at (45:0.8mm) {};
+		\draw (-150:0.9mm) -- (-60:1.3mm);
+	}
 }
 
 \newcommand{\vx}{\mathbf{x}} % x vector
@@ -160,7 +170,7 @@
 	\begin{block}{Frustrations \tiny{(fewer than expected)}}
 		\begin{itemize}
 			\item Discontinuous finite element is new to me. Not like the majority of Deal.ii, \texttt{MeshWorker} took some getting used to.
-			\item I really need to quit spending so much time on architecture...
+			\item \textbf{I really need to quit spending so much time on architecture...}
 			\item S$_N$ transport has specified directions of travel, therefore the discontinuous weak form is somewhat intuitive. This is not the case with diffusion transport, therefore the DFEM weak form isn't as fun.
 		\end{itemize}
 	\end{block}
@@ -168,7 +178,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\begin{frame}\frametitle{Aside: Downstream renumbering}
+\begin{frame}\frametitle{Aside: Downstream Renumbering}
 	\begin{minipage}{0.52\linewidth}
 		\begin{itemize}
 			\item The S$_N$ problem with upwind approximation $\rightarrow$ matrix solves can be local if solved in the upstream direction.
@@ -185,7 +195,24 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}\frametitle{Coming soon \tiny{(maybe? hopefully?)}}
-
+	\begin{itemize}
+		\item I've been through plenty of literature review on diffusion acceleration techniques for S$_N$ transport and have a choice for a penalty method (similar to as done in step-39).
+		\item The solving architecture and variable transfers between S$_N$ and diffusion is ready in the code $\rightarrow$ need to write up and code the assembly \neutranie
+	\end{itemize}
+	\vfill
+	\begin{center}
+		\color{Maroon}\fbox{\begin{minipage}{0.65\linewidth}
+			\centering
+			\Large
+			\normalcolor
+			\vspace{0.1cm}
+			See you next time with good results.\\
+			That's all.\\
+			Thanks for your time.
+			\vspace{0.1cm}
+		\end{minipage}}
+	\end{center}
+	\vfill
 \end{frame}
 
 \end{document}
