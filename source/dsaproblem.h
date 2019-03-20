@@ -30,6 +30,12 @@ public:
   bool is_enabled() const { return enabled; }
 
 private:
+  /// Cell integration term for MeshWorker
+  void integrate_cell(DoFInfo & dinfo, CellInfo & info) const;
+  /// Boundary integration term for MeshWorker
+  void integrate_boundary(DoFInfo & dinfo, CellInfo & info) const;
+  /// Face integration term for MeshWorker
+  void integrate_face(DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2) const;
 
   /// Access to the description in the Problem
   const Description & description;
@@ -52,6 +58,8 @@ private:
   Vector<double> rhs;
   /// System solution used in solving a single direction
   Vector<double> solution;
+  /// InfoBox for MeshWorker
+  MeshWorker::IntegrationInfoBox<2> info_box;
   /// Assembler used by the MeshWorker::loop
   MeshWorker::Assembler::SystemSimple<SparseMatrix<double>, Vector<double>> assembler;
 
