@@ -164,7 +164,7 @@
 			\item A one-group, 2D neutron transport code using the S$_N$ approximation has been developed using linear discontinuous finite elements in Deal.ii.
 			\item Verified using known constant source solutions and MMS.
 			\item Primarily uses the \texttt{MeshWorker} interface as discussed in step-12.
-			\item \texttt{downstream\_renumbering} preconditions the within-direction solve.
+			\item \texttt{downstream()} preconditions the direction solve (more on next slide).
 		\end{itemize}
 	\end{block}
 	\begin{block}{Frustrations \tiny{(fewer than expected)}}
