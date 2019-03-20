@@ -55,6 +55,7 @@ Problem::solve()
     const bool sn_converged = sn.solve_directions(l);
     if (sn_converged)
       return;
+    dsa.solve();
   }
 
   std::cout << "Source iteration did not converge" << std::endl;

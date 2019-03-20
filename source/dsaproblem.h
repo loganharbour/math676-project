@@ -27,9 +27,12 @@ public:
   /// Initial setup for the DSAProblem
   void setup();
 
+  void solve();
+
   bool is_enabled() const { return enabled; }
 
 private:
+  void assemble();
   /// Cell integration term for MeshWorker
   void integrate_cell(DoFInfo & dinfo, CellInfo & info) const;
   /// Boundary integration term for MeshWorker
@@ -56,7 +59,7 @@ private:
   SparseMatrix<double> matrix;
   /// System right hand side used in solving a single direction
   Vector<double> rhs;
-  /// System solution used in solving a single direction
+  /// System scattering source/solution vector (used for both)
   Vector<double> solution;
   /// InfoBox for MeshWorker
   MeshWorker::IntegrationInfoBox<2> info_box;
