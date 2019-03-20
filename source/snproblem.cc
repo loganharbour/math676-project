@@ -160,8 +160,8 @@ SNProblem::assemble_direction(const Tensor<1, 2> & dir, const bool renumber_flux
 void
 SNProblem::integrate_cell(DoFInfo & dinfo,
                           CellInfo & info,
-                          const Tensor<1, 2> dir,
-                          const bool renumber_flux)
+                          const Tensor<1, 2> & dir,
+                          const bool renumber_flux) const
 {
   const FEValuesBase<2> & fe_v = info.fe_values();
   FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
@@ -213,7 +213,7 @@ SNProblem::integrate_cell(DoFInfo & dinfo,
 }
 
 void
-SNProblem::integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> dir)
+SNProblem::integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> & dir) const
 {
   // Dot product between the direction and the outgoing normal
   const double dir_dot_n = dir * info.fe_values().normal_vector(0);
@@ -272,8 +272,11 @@ SNProblem::integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 
 }
 
 void
-SNProblem::integrate_face(
-    DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2, const Tensor<1, 2> dir)
+SNProblem::integrate_face(DoFInfo & dinfo1,
+                          DoFInfo & dinfo2,
+                          CellInfo & info1,
+                          CellInfo & info2,
+                          const Tensor<1, 2> & dir) const
 {
   // Dot product between the direction and the outgoing normal of face 1
   const double dir_dot_n1 = dir * info1.fe_values().normal_vector(0);

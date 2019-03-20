@@ -33,7 +33,6 @@ public:
   const std::vector<double> & get_residuals() const { return residuals; }
 
 private:
-
   /// Solve and fill scalar flux for angular direction d
   void solve_direction(const unsigned int d);
 
@@ -42,16 +41,16 @@ private:
   /// Cell integration term for MeshWorker
   void integrate_cell(DoFInfo & dinfo,
                       CellInfo & info,
-                      const Tensor<1, 2> dir,
-                      const bool renumber_flux);
+                      const Tensor<1, 2> & dir,
+                      const bool renumber_flux) const;
   /// Boundary integration term for MeshWorker
-  void integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> dir);
+  void integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> & dir) const;
   /// Face integration term for MeshWorker
   void integrate_face(DoFInfo & dinfo1,
                       DoFInfo & dinfo2,
                       CellInfo & info1,
                       CellInfo & info2,
-                      const Tensor<1, 2> dir);
+                      const Tensor<1, 2> & dir) const;
 
   /// Compute the L2 norm of (v1 - v2)
   double L2_difference(const Vector<double> & v1, const Vector<double> & v2);
