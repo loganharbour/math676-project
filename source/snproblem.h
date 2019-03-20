@@ -77,6 +77,8 @@ private:
   Vector<double> rhs;
   /// System solution used in solving a single direction
   Vector<double> solution;
+  /// InfoBox for MeshWorker
+  MeshWorker::IntegrationInfoBox<2> info_box;
   /// Assembler used by the MeshWorker::loop
   MeshWorker::Assembler::SystemSimple<SparseMatrix<double>, Vector<double>> assembler;
 

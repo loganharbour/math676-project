@@ -34,6 +34,14 @@ SNProblem::setup()
   matrix.reinit(discretization.get_sparsity_pattern());
   solution.reinit(dof_handler.n_dofs());
 
+  // Setup InfoBox for MeshWorker
+  const unsigned int n_points = dof_handler.get_fe().degree + 1;
+  info_box.initialize_gauss_quadrature(n_points, n_points, n_points);
+  info_box.initialize_update_flags();
+  UpdateFlags update_flags = update_quadrature_points | update_values | update_gradients;
+  info_box.add_update_flags(update_flags, true, true, true, true);
+  info_box.initialize(discretization.get_fe(), discretization.get_mapping());
+
   // Pass the matrix and rhs to the assembler
   assembler.initialize(matrix, rhs);
 }
@@ -142,7 +150,7 @@ SNProblem::assemble_direction(const Tensor<1, 2> & dir, const bool renumber_flux
       dof_handler.begin_active(),
       dof_handler.end(),
       dof_info,
-      discretization.info_box,
+      info_box,
       cell_worker,
       boundary_worker,
       face_worker,
@@ -320,7 +328,7 @@ SNProblem::L2_difference(const Vector<double> & v1, const Vector<double> & v2)
       dof_handler.begin_active(),
       dof_handler.end(),
       dof_info,
-      discretization.info_box,
+      info_box,
       cell_worker,
       NULL,
       NULL,

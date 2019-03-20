@@ -33,14 +33,6 @@ Discretization::setup()
   // Distribute degrees of freedom
   dof_handler.distribute_dofs(fe);
 
-  // Setup InfoBox for MeshWorker
-  const unsigned int n_points = dof_handler.get_fe().degree + 1;
-  info_box.initialize_gauss_quadrature(n_points, n_points, n_points);
-  info_box.initialize_update_flags();
-  UpdateFlags update_flags = update_quadrature_points | update_values | update_gradients;
-  info_box.add_update_flags(update_flags, true, true, true, true);
-  info_box.initialize(fe, mapping);
-
   // Initialize angular quadrature
   aq.init(aq_order);
 
