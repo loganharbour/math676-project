@@ -1,8 +1,9 @@
 #include "description.h"
 #include "material.h"
 
-#include <algorithm>
 #include <deal.II/base/exceptions.h>
+
+#include <algorithm>
 
 namespace RadProblem
 {
@@ -91,6 +92,14 @@ Description::setup_boundary_conditions()
   // Marker for incident BCs
   if (isotropic_bcs.size() != 0 || perpendicular_bcs.size() != 0)
     incident_bcs = true;
+}
+
+const Material &
+Description::get_material(const unsigned int id) const
+{
+  const auto search = materials.find(id);
+  Assert(search != materials.end(), ExcMessage("Material id not found in material map"));
+  return search->second;
 }
 
 } // namespace RadProblem

@@ -3,13 +3,12 @@
 
 #include <deal.II/base/parameter_acceptor.h>
 
+#include "material.h"
+
 #include <map>
 
 namespace RadProblem
 {
-// Forward declaration
-class Material;
-
 class Description : public dealii::ParameterAcceptor
 {
 public:
@@ -17,6 +16,7 @@ public:
 
   void setup(const std::set<unsigned int> & mesh_material_ids);
 
+  const Material & get_material(const unsigned int id) const;
   const std::map<const unsigned int, const Material> & get_materials() const { return materials; }
   const std::map<const unsigned int, const double> & get_perpendicular_bcs() const
   {

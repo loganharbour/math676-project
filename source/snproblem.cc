@@ -17,7 +17,6 @@ SNProblem::SNProblem(Problem & problem)
     description(problem.get_description()),
     discretization(problem.get_discretization()),
     dof_handler(discretization.get_dof_handler()),
-    materials(description.get_materials()),
     aq(discretization.get_aq()),
     scalar_flux(problem.get_scalar_flux()),
     scalar_flux_old(problem.get_scalar_flux_old())
@@ -168,10 +167,8 @@ SNProblem::integrate_cell(DoFInfo & dinfo,
   Vector<double> & local_vector = dinfo.vector(0).block(0);
   const std::vector<double> & JxW = fe_v.get_JxW_values();
 
-  // Get material for this cell
-  auto search = materials.find(dinfo.cell->material_id());
-  Assert(search != materials.end(), ExcMessage("Material id not found in material map"));
-  const Material & material = search->second;
+  // Material for this cell
+  const Material & material = description.get_material(dinfo.cell->material_id());
 
   // Whether or not this cell has scattering
   const bool has_scattering = material.sigma_s != 0;
