@@ -133,8 +133,10 @@ DSAProblem::integrate_face(DoFInfo & dinfo1,
   const unsigned int deg1 = info1.fe_values().get_fe().tensor_degree();
   const unsigned int deg2 = info2.fe_values().get_fe().tensor_degree();
   // Length of the cells in the orthogonal direction to this face
-  const double h1 = dinfo1.face->measure() / dinfo1.cell->measure();
-  const double h2 = dinfo2.face->measure() / dinfo2.cell->measure();
+  const unsigned int n1 = GeometryInfo<2>::unit_normal_direction[dinfo1.face_number];
+  const unsigned int n2 = GeometryInfo<2>::unit_normal_direction[dinfo2.face_number];
+  const double h1 = dinfo1.cell->extent_in_direction(n1);
+  const double h2 = dinfo2.cell->extent_in_direction(n2);
   // Penalty coefficient
   const double c1 = 2 * deg1 * (deg1 + 1);
   const double c2 = 2 * deg2 * (deg2 + 1);
@@ -167,7 +169,8 @@ DSAProblem::integrate_boundary(DoFInfo & dinfo, CellInfo & info) const
     // Polynomial degrees on the face
     const unsigned int deg = info.fe_values().get_fe().tensor_degree();
     // Length of the cell in the orthogonal direction to this face
-    const double h = dinfo.face->measure() / dinfo.cell->measure();
+    const unsigned int n = GeometryInfo<2>::unit_normal_direction[dinfo.face_number];
+    const double h = dinfo.cell->extent_in_direction(n);
     // Penalty coefficient
     const double c = 2 * deg * (deg + 1);
     const double kappa = std::fmax(c * D / h, 0.25);
