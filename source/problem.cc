@@ -1,7 +1,5 @@
 #include "problem.h"
 
-#include "material.h"
-
 #include <deal.II/numerics/data_out.h>
 
 namespace RadProblem
@@ -16,6 +14,9 @@ Problem::Problem()
 {
   // .vtu output filename (default: output); no output if empty
   add_parameter("vtu_filename", vtu_filename);
+
+  // Maximum source iterations (default: 200)
+  add_parameter("max_source_iterations", max_its);
 }
 
 void
@@ -51,14 +52,17 @@ Problem::setup()
 void
 Problem::solve()
 {
-  for (unsigned int l = 0; l < 1000; ++l) {
+  for (unsigned int l = 0; l < max_its; ++l)
+  {
     const bool sn_converged = sn.solve_directions(l);
     if (sn_converged)
       return;
-    dsa.solve();
+
+    if (dsa.is_enabled())
+      dsa.solve();
   }
 
-  std::cout << "Source iteration did not converge" << std::endl;
+  std::cout << "Did not converge after " << max_its << " iterations!" << std::endl;
 }
 
 void

@@ -1,5 +1,4 @@
 #include "description.h"
-#include "material.h"
 
 #include <deal.II/base/exceptions.h>
 

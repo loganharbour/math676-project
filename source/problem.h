@@ -68,6 +68,8 @@ private:
 
   /// Vtu output filename
   std::string vtu_filename = "output";
+  /// Maximum source iterations
+  unsigned int max_its = 200;
 };
 } // namespace RadProblem
 

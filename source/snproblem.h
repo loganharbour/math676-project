@@ -12,7 +12,6 @@ namespace RadProblem
 class AngularQuadrature;
 class Description;
 class Discretization;
-class Material;
 class Problem;
 
 using namespace dealii;

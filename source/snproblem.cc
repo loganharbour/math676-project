@@ -2,7 +2,6 @@
 
 #include "description.h"
 #include "discretization.h"
-#include "material.h"
 #include "problem.h"
 
 #include <deal.II/base/exceptions.h>
