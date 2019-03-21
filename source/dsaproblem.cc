@@ -129,12 +129,13 @@ DSAProblem::integrate_face(DoFInfo & dinfo1,
   // Diffusion coefficient in each cell
   const double D1 = description.get_material(dinfo1.cell->material_id()).D;
   const double D2 = description.get_material(dinfo2.cell->material_id()).D;
-
-  // Penalty coefficient
+  // Polynomial degrees on each face
   const unsigned int deg1 = info1.fe_values().get_fe().tensor_degree();
   const unsigned int deg2 = info2.fe_values().get_fe().tensor_degree();
+  // Length of the cells in the orthogonal direction to this face
   const double h1 = dinfo1.face->measure() / dinfo1.cell->measure();
   const double h2 = dinfo2.face->measure() / dinfo2.cell->measure();
+  // Penalty coefficient
   const double c1 = 2 * deg1 * (deg1 + 1);
   const double c2 = 2 * deg2 * (deg2 + 1);
   const double kappa = std::fmax(0.5 * (c1 * D1 / h1 + c2 * D2 / h2), 0.25);
@@ -163,9 +164,11 @@ DSAProblem::integrate_boundary(DoFInfo & dinfo, CellInfo & info) const
   // RHS contribution (for dirichlet BCs)
   if (bc_type != Description::BCTypes::Reflective)
   {
-    // Penalty coefficient
+    // Polynomial degrees on the face
     const unsigned int deg = info.fe_values().get_fe().tensor_degree();
+    // Length of the cell in the orthogonal direction to this face
     const double h = dinfo.face->measure() / dinfo.cell->measure();
+    // Penalty coefficient
     const double c = 2 * deg * (deg + 1);
     const double kappa = std::fmax(c * D / h, 0.25);
 
