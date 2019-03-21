@@ -2,7 +2,6 @@
 
 #include "description.h"
 #include "discretization.h"
-#include "material.h"
 #include "problem.h"
 
 #include <deal.II/algorithms/any_data.h>
@@ -20,7 +19,6 @@ DSAProblem::DSAProblem(Problem & problem)
     description(problem.get_description()),
     discretization(problem.get_discretization()),
     dof_handler(discretization.get_dof_handler()),
-    materials(description.get_materials()),
     aq(discretization.get_aq()),
     scalar_flux(problem.get_scalar_flux()),
     scalar_flux_old(problem.get_scalar_flux_old())
@@ -106,14 +104,15 @@ DSAProblem::integrate_cell(DoFInfo & dinfo, CellInfo & info) const
   const FEValuesBase<2> & fe = info.fe_values();
   FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
   Vector<double> & local_vector = dinfo.vector(0).block(0);
-  const Material & material = description.get_material(dinfo.cell->material_id());
+  const auto & material = description.get_material(dinfo.cell->material_id());
 
   // Change in scalar flux at each vertex for the scattering "source"
   std::vector<double> local_scalar_flux_change(fe.dofs_per_cell);
   for (unsigned int i = 0; i < fe.dofs_per_cell; ++i)
   {
-    local_scalar_flux_change[i] = scalar_flux(dinfo.indices[i]);
-    local_scalar_flux_change[i] -= scalar_flux_old(dinfo.indices[i]);
+    // set source t with w/e material properties and observe bell solution
+    local_scalar_flux_change[i] = scalar_flux_old(dinfo.indices[i]);
+    local_scalar_flux_change[i] -= scalar_flux(dinfo.indices[i]);
   }
 
   LocalIntegrators::L2::mass_matrix(local_matrix, fe, material.sigma_a);
@@ -139,7 +138,7 @@ DSAProblem::integrate_face(DoFInfo & dinfo1,
   const double c1 = 2 * ((d1 == 0) ? 1 : d1 * (d1 + 1));
   const double c2 = 2 * ((d2 == 0) ? 1 : d2 * (d2 + 1));
   const double penalty1 = c1 * D1 / dinfo1.cell->extent_in_direction(n1);
-  const double penalty2 = c2 * D2 / dinfo1.cell->extent_in_direction(n2);
+  const double penalty2 = c2 * D2 / dinfo2.cell->extent_in_direction(n2);
   const double kappa = std::fmax(0.5 * (penalty1 + penalty2), 0.25);
 
   LocalIntegrators::Laplace::ip_matrix(dinfo1.matrix(0, false).matrix,
@@ -148,7 +147,7 @@ DSAProblem::integrate_face(DoFInfo & dinfo1,
                                        dinfo2.matrix(0, false).matrix,
                                        info1.fe_values(0),
                                        info2.fe_values(0),
-                                       kappa,
+                                       2 * kappa / (D1 + D2),
                                        D1,
                                        D2);
 }
@@ -166,9 +165,8 @@ DSAProblem::integrate_boundary(DoFInfo & dinfo, CellInfo & info) const
   const double penalty = c * D / dinfo.cell->extent_in_direction(n);
   const double kappa = std::fmax(penalty, 0.25);
 
-  // TODO: figure out why penalty term is x 2 on line 181 of laplace.h
   LocalIntegrators::Laplace::nitsche_matrix(
-      dinfo.matrix(0, false).matrix, info.fe_values(0), kappa / D, D / 2);
+      dinfo.matrix(0, false).matrix, info.fe_values(0), 2 * kappa / D, D / 2);
 }
 
 } // namespace RadProblem
