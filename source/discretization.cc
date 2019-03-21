@@ -77,6 +77,8 @@ Discretization::get_material_ids(std::set<unsigned int> & material_ids) const
 void
 Discretization::renumber_dofs(const unsigned int half)
 {
+  if (half != 0 && half != 1)
+    throw ExcMessage("half can only be 0 or 1 in renumber_dofs");
   dof_handler.renumber_dofs(renumberings[half]);
 }
 
