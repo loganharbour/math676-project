@@ -64,8 +64,8 @@ SNProblem::solve_directions()
   // Check convergence
   const double norm = L2_difference(scalar_flux, scalar_flux_old);
   residuals.push_back(norm);
-  std::cout << "  Source iteration L2 difference: " << std::scientific << std::setprecision(2)
-            << norm << std::endl;
+  std::cout << "  Scalar flux L2 difference: " << std::scientific << std::setprecision(2) << norm
+            << std::endl;
 
   // Converged
   if (norm < source_iteration_tolerance)
