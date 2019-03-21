@@ -23,8 +23,8 @@ DSAProblem::DSAProblem(Problem & problem)
     scalar_flux(problem.get_scalar_flux()),
     scalar_flux_old(problem.get_scalar_flux_old())
 {
-    // Whether or not DSA is enabled (default: true)
-    add_parameter("enabled", enabled);
+  // Whether or not DSA is enabled (default: true)
+  add_parameter("enabled", enabled);
 }
 
 void

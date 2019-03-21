@@ -56,7 +56,7 @@ Problem::solve()
   {
     std::cout << "Source iteration " << l << std::endl;
 
-    // Solve all directions with S_N
+    // Solve all directions with SN
     const bool sn_converged = sn.solve_directions();
 
     // Done if we are converged
