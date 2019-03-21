@@ -1,0 +1,22 @@
+subsection Description
+  set material_ids              = 0
+  set material_sigma_s          = 1
+  set material_sigma_t          = 2
+  set material_src              = 1
+end
+
+
+subsection Discretization
+  set aq_order           = 4
+  set uniform_refinement = 5
+end
+
+
+subsection Problem
+  set vtu_filename = dsa_testing
+end
+
+
+subsection DSAProblem
+  set enabled = true
+end
