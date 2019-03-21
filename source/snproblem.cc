@@ -5,6 +5,8 @@
 #include "material.h"
 #include "problem.h"
 
+#include <deal.II/base/exceptions.h>
+#include <deal.II/integrators/l2.h>
 #include <deal.II/lac/precondition_block.h>
 #include <deal.II/lac/solver_richardson.h>
 
@@ -168,7 +170,7 @@ SNProblem::integrate_cell(DoFInfo & dinfo,
   const std::vector<double> & JxW = fe_v.get_JxW_values();
 
   // Material for this cell
-  const Material & material = description.get_material(dinfo.cell->material_id());
+  const auto & material = description.get_material(dinfo.cell->material_id());
 
   // Whether or not this cell has scattering
   const bool has_scattering = material.sigma_s != 0;
@@ -215,34 +217,26 @@ SNProblem::integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 
   // Dot product between the direction and the outgoing normal
   const double dir_dot_n = dir * info.fe_values().normal_vector(0);
 
-  // Face is incoming: check incident boundary conditions
-  if (dir_dot_n < 0)
+  // Face is incoming: check incident boundary conditions; if we have only
+  // vacuum conditions, there is nothing to do here
+  if (dir_dot_n < 0 && description.has_incident_bcs())
   {
-    // Exit face if problem does not have incident boundary conditions
-    if (!description.has_incident_bcs())
-      return;
+    const auto & bc = description.get_bc(dinfo.face->boundary_id());
 
     double bc_value = 0;
-    // Search for an isotropic boundary condition
-    const auto & isotropic_bcs = description.get_isotropic_bcs();
-    auto search = isotropic_bcs.find(dinfo.face->boundary_id());
-    // Found an isotropic boundary condition
-    if (search != isotropic_bcs.end())
-      bc_value = search->second;
-    // Search for a perpendicular boundary condition
-    else
+    switch (bc.type)
     {
-      const auto & perpendicular_bcs = description.get_perpendicular_bcs();
-      search = perpendicular_bcs.find(dinfo.face->boundary_id());
-      // Found a perpendicular boundary condition
-      if (search != perpendicular_bcs.end())
-        bc_value = search->second;
-      // Didn't find any incident boundary conditions
-      else
+      case Description::BCTypes::Vacuum:
         return;
+      case Description::BCTypes::Isotropic:
+        bc_value = bc.value;
+        break;
+      case Description::BCTypes::Reflective:
+        throw ExcMessage("Reflective bc not supported yet");
+      case Description::BCTypes::Perpendicular:
+        throw ExcMessage("Perpendicular bc not supported yet");
     }
 
-    // Continue if we have a nonzero value
     const FEValuesBase<2> & fe_v = info.fe_values();
     Vector<double> & local_vector = dinfo.vector(0).block(0);
     const std::vector<double> & JxW = fe_v.get_JxW_values();

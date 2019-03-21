@@ -8,6 +8,7 @@ subsection Description
   set material_src              = 1
   set isotropic_boundary_ids    = 0
   set isotropic_boundary_fluxes = 0.01
+  set vacuum_boundary_ids       =
 end
 
 
