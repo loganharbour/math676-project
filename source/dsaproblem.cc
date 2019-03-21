@@ -23,8 +23,8 @@ DSAProblem::DSAProblem(Problem & problem)
     scalar_flux(problem.get_scalar_flux()),
     scalar_flux_old(problem.get_scalar_flux_old())
 {
-  // Whether or not DSA is enabled (default: true)
-  add_parameter("enabled", enabled);
+    // Whether or not DSA is enabled (default: true)
+    add_parameter("enabled", enabled);
 }
 
 void
@@ -51,6 +51,10 @@ DSAProblem::setup()
 void
 DSAProblem::solve()
 {
+  // Skip if disabled
+  if (!enabled)
+    return;
+
   // Assembly
   assemble();
 
@@ -60,7 +64,7 @@ DSAProblem::solve()
   PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
   preconditioner.initialize(matrix, discretization.get_fe().dofs_per_cell);
   solver.solve(matrix, solution, rhs, preconditioner);
-  std::cout << "DSA converged after " << control.last_step() << " iterations " << std::endl;
+  std::cout << "  DSA converged after " << control.last_step() << " CG iterations" << std::endl;
 
   // Update scalar flux with change
   scalar_flux += solution;
@@ -107,17 +111,13 @@ DSAProblem::integrate_cell(DoFInfo & dinfo, CellInfo & info) const
   const auto & material = description.get_material(dinfo.cell->material_id());
 
   // Change in scalar flux at each vertex for the scattering "source"
-  std::vector<double> local_scalar_flux_change(fe.dofs_per_cell);
+  std::vector<double> scalar_flux_change(fe.dofs_per_cell);
   for (unsigned int i = 0; i < fe.dofs_per_cell; ++i)
-  {
-    // set source t with w/e material properties and observe bell solution
-    local_scalar_flux_change[i] = scalar_flux_old(dinfo.indices[i]);
-    local_scalar_flux_change[i] -= scalar_flux(dinfo.indices[i]);
-  }
+    scalar_flux_change[i] = scalar_flux(dinfo.indices[i]) - scalar_flux_old(dinfo.indices[i]);
 
   LocalIntegrators::L2::mass_matrix(local_matrix, fe, material.sigma_a);
   LocalIntegrators::Laplace::cell_matrix(local_matrix, fe, material.D);
-  LocalIntegrators::L2::L2(local_vector, fe, local_scalar_flux_change, material.sigma_s);
+  LocalIntegrators::L2::L2(local_vector, fe, scalar_flux_change, material.sigma_s);
 }
 
 void
@@ -131,22 +131,22 @@ DSAProblem::integrate_face(DoFInfo & dinfo1,
   const double D2 = description.get_material(dinfo2.cell->material_id()).D;
 
   // Penalty coefficient
-  const unsigned int d1 = info1.fe_values(0).get_fe().tensor_degree();
-  const unsigned int d2 = info2.fe_values(0).get_fe().tensor_degree();
-  const unsigned int n1 = GeometryInfo<2>::unit_normal_direction[dinfo1.face_number];
-  const unsigned int n2 = GeometryInfo<2>::unit_normal_direction[dinfo2.face_number];
-  const double c1 = 2 * ((d1 == 0) ? 1 : d1 * (d1 + 1));
-  const double c2 = 2 * ((d2 == 0) ? 1 : d2 * (d2 + 1));
-  const double penalty1 = c1 * D1 / dinfo1.cell->extent_in_direction(n1);
-  const double penalty2 = c2 * D2 / dinfo2.cell->extent_in_direction(n2);
-  const double kappa = std::fmax(0.5 * (penalty1 + penalty2), 0.25);
+  const unsigned int deg1 = info1.fe_values().get_fe().tensor_degree();
+  const unsigned int deg2 = info2.fe_values().get_fe().tensor_degree();
+  const double h1 = dinfo1.face->measure() / dinfo1.cell->measure();
+  const double h2 = dinfo2.face->measure() / dinfo2.cell->measure();
+  const double c1 = 2 * deg1 * (deg1 + 1);
+  const double c2 = 2 * deg2 * (deg2 + 1);
+  const double kappa = std::fmax(0.5 * (c1 * D1 / h1 + c2 * D2 / h2), 0.25);
 
+  // Multiply penalty coefficient by 2 / (D1 + D2) to cancel out
+  // nu = (nui + nue) / 2 = 2 / (D1 + D2) in ip_matrix
   LocalIntegrators::Laplace::ip_matrix(dinfo1.matrix(0, false).matrix,
                                        dinfo1.matrix(0, true).matrix,
                                        dinfo2.matrix(0, true).matrix,
                                        dinfo2.matrix(0, false).matrix,
-                                       info1.fe_values(0),
-                                       info2.fe_values(0),
+                                       info1.fe_values(),
+                                       info2.fe_values(),
                                        2 * kappa / (D1 + D2),
                                        D1,
                                        D2);
@@ -155,18 +155,25 @@ DSAProblem::integrate_face(DoFInfo & dinfo1,
 void
 DSAProblem::integrate_boundary(DoFInfo & dinfo, CellInfo & info) const
 {
+  const auto bc_type = description.get_bc(dinfo.face->boundary_id()).type;
+
   // Diffusion coefficient
   const double D = description.get_material(dinfo.cell->material_id()).D;
 
-  // Penalty coefficient
-  const unsigned int d = info.fe_values(0).get_fe().tensor_degree();
-  const unsigned int n = GeometryInfo<2>::unit_normal_direction[dinfo.face_number];
-  const double c = 2 * ((d == 0) ? 1 : d * (d + 1));
-  const double penalty = c * D / dinfo.cell->extent_in_direction(n);
-  const double kappa = std::fmax(penalty, 0.25);
+  // RHS contribution (for dirichlet BCs)
+  if (bc_type != Description::BCTypes::Reflective)
+  {
+    // Penalty coefficient
+    const unsigned int deg = info.fe_values().get_fe().tensor_degree();
+    const double h = dinfo.face->measure() / dinfo.cell->measure();
+    const double c = 2 * deg * (deg + 1);
+    const double kappa = std::fmax(c * D / h, 0.25);
 
-  LocalIntegrators::Laplace::nitsche_matrix(
-      dinfo.matrix(0, false).matrix, info.fe_values(0), 2 * kappa / D, D / 2);
+    // Multiply penalty coefficient by 2 / D to negate the factor D / 2 that
+    // multiplies every term in nitsche_matrix
+    LocalIntegrators::Laplace::nitsche_matrix(
+        dinfo.matrix(0, false).matrix, info.fe_values(), 2 * kappa / D, D / 2);
+  }
 }
 
 } // namespace RadProblem

@@ -54,15 +54,20 @@ Problem::solve()
 {
   for (unsigned int l = 0; l < max_its; ++l)
   {
-    const bool sn_converged = sn.solve_directions(l);
+    std::cout << "Source iteration " << l << std::endl;
+
+    // Solve all directions with S_N
+    const bool sn_converged = sn.solve_directions();
+
+    // Done if we are converged
     if (sn_converged)
       return;
 
-    if (dsa.is_enabled())
-      dsa.solve();
+    // Not converged, run DSA if enabled
+    dsa.solve();
   }
 
-  std::cout << "Did not converge after " << max_its << " iterations!" << std::endl;
+  std::cout << "Did not converge after " << max_its << " source iterations!" << std::endl;
 }
 
 void

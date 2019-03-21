@@ -27,7 +27,7 @@ public:
   void setup();
 
   /// Solve all directions
-  bool solve_directions(const unsigned int l);
+  bool solve_directions();
 
   const std::vector<double> & get_residuals() const { return residuals; }
 

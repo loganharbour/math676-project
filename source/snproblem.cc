@@ -47,7 +47,7 @@ SNProblem::setup()
 }
 
 bool
-SNProblem::solve_directions(const unsigned int l)
+SNProblem::solve_directions()
 {
   // Copy to old scalar flux and zero scalar flux for update
   scalar_flux_old = scalar_flux;
@@ -57,32 +57,27 @@ SNProblem::solve_directions(const unsigned int l)
   for (unsigned int d = 0; d < aq.n_dir(); ++d)
     solve_direction(d);
 
-  // Source iteration: check for convergence
-  if (description.has_scattering())
-  {
-    const double norm = L2_difference(scalar_flux, scalar_flux_old);
-    residuals.push_back(norm);
-    std::cout << "Source iteration " << l << " norm: " << std::scientific << std::setprecision(2)
-              << norm << std::endl
-              << std::endl;
-
-    // Return true if converged
-    if (norm < source_iteration_tolerance)
-      return true;
-    // Return false if not converged
-    else
-      return false;
-  }
-  // No scattering: return true for converged
-  else
+  // No source iterations without scattering: converged
+  if (!description.has_scattering())
     return true;
+
+  // Check convergence
+  const double norm = L2_difference(scalar_flux, scalar_flux_old);
+  residuals.push_back(norm);
+  std::cout << "  Source iteration L2 difference: " << std::scientific << std::setprecision(2)
+            << norm << std::endl;
+
+  // Converged
+  if (norm < source_iteration_tolerance)
+    return true;
+  // Not converged
+  else
+    return false;
 }
 
 void
 SNProblem::solve_direction(const unsigned int d)
 {
-  std::cout << "Solving direction " << d;
-
   // See if renumbering is required
   const unsigned int half = (d < aq.n_dir() / 2 ? 0 : 1);
   const bool renumber_flux = (discretization.do_renumber() && half == 0 ? true : false);
@@ -102,7 +97,8 @@ SNProblem::solve_direction(const unsigned int d)
     PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
     preconditioner.initialize(matrix, discretization.get_fe().dofs_per_cell);
     solver.solve(matrix, solution, rhs, preconditioner);
-    std::cout << " - converged after " << solver_control.last_step() << " iterations " << std::endl;
+    std::cout << "  Direction " << d << " converged after " << solver_control.last_step()
+              << " Richardson iterations " << std::endl;
   }
   // Solve the system with renumbering enabled
   else
@@ -110,7 +106,6 @@ SNProblem::solve_direction(const unsigned int d)
     PreconditionBlockSOR<SparseMatrix<double>> preconditioner;
     preconditioner.initialize(matrix, discretization.get_fe().dofs_per_cell);
     preconditioner.step(solution, rhs);
-    std::cout << std::endl;
   }
 
   // Update scalar flux at each node (weighed by angular weight)
