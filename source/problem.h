@@ -28,6 +28,8 @@ public:
 
   const Description & get_description() const { return description; }
   Discretization & get_discretization() { return discretization; }
+  const Discretization & get_discretization() const { return discretization; }
+
   Vector<double> & get_scalar_flux() { return scalar_flux; }
   Vector<double> & get_scalar_flux_old() { return scalar_flux_old; }
 

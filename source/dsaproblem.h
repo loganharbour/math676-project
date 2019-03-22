@@ -50,7 +50,7 @@ private:
   /// Access to the description in the Problem
   const Description & description;
   /// Access to the discretization in the Problem
-  Discretization & discretization;
+  const Discretization & discretization;
   /// Access to the dof_handler in the Description
   const DoFHandler<2> & dof_handler;
   /// Access to the angular quadrature
