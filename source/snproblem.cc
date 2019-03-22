@@ -70,24 +70,14 @@ SNProblem::solve_direction(const unsigned int d)
   // Assemble the system
   assemble_direction(aq.dir(d), renumber_flux);
 
-  // Solve the system with renumbering disabled
-  if (!discretization.do_renumber())
-  {
-    SolverControl solver_control(1000, 1e-12);
-    SolverRichardson<> solver(solver_control);
-    PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
-    preconditioner.initialize(matrix, dof_handler.get_fe().dofs_per_cell);
-    solver.solve(matrix, solution, rhs, preconditioner);
-    std::cout << "  Direction " << d << " converged after " << solver_control.last_step()
-              << " Richardson iterations " << std::endl;
-  }
-  // Solve the system with renumbering enabled
-  else
-  {
-    PreconditionBlockSOR<SparseMatrix<double>> preconditioner;
-    preconditioner.initialize(matrix, dof_handler.get_fe().dofs_per_cell);
-    preconditioner.step(solution, rhs);
-  }
+  SolverControl solver_control(1000, 1e-12);
+  SolverRichardson<> solver(solver_control);
+  PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
+  preconditioner.initialize(matrix, dof_handler.get_fe().dofs_per_cell);
+  solver.solve(matrix, solution, rhs, preconditioner);
+
+  std::cout << "  Direction " << d << " converged after " << solver_control.last_step()
+            << " Richardson iterations " << std::endl;
 
   // Update scalar flux at each node (weighed by angular weight)
   const double weight = aq.w(d);
