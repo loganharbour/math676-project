@@ -197,7 +197,7 @@ SNProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
   const double dir_dot_n = dir * info.fe_values().normal_vector(0);
 
   // Face is incoming
-  if (dir_dot_n)
+  if (dir_dot_n < 0)
   {
     // Nothing to do for incoming without incident boundary conditions
     if (!description.has_incident_bcs())
