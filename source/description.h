@@ -78,7 +78,7 @@ private:
   void setup_materials(const std::set<unsigned int> & mesh_material_ids);
 
   // Material storage
-  std::map<const unsigned int, const Description::Material> materials;
+  std::map<const unsigned int, const Material> materials;
   // Whether or not the problem has scattering
   bool scattering = false;
 
