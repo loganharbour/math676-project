@@ -56,7 +56,8 @@ public:
   };
 
   // Setup to be called by the Problem
-  void setup(const std::set<unsigned int> & mesh_material_ids);
+  void setup(const std::set<unsigned int> & mesh_boundary_ids,
+             const std::set<unsigned int> & mesh_material_ids);
 
   // Get the bc for boundary_id
   const BC & get_bc(const unsigned int boundary_id) const;
@@ -73,7 +74,7 @@ private:
                 const std::vector<unsigned int> & ids,
                 const std::vector<double> * values = NULL);
 
-  void setup_bcs();
+  void setup_bcs(const std::set<unsigned int> & mesh_boundary_ids);
   void setup_materials(const std::set<unsigned int> & mesh_material_ids);
 
   // Material storage

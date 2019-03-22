@@ -67,6 +67,22 @@ Discretization::generate_mesh()
 }
 
 void
+Discretization::get_boundary_ids(std::set<unsigned int> & boundary_ids) const
+{
+  boundary_ids.clear();
+  for (const auto & cell : dof_handler.active_cell_iterators())
+  {
+    if (!cell->at_boundary())
+      continue;
+    for (unsigned int i = 0; i < GeometryInfo<2>::faces_per_cell; ++i)
+    {
+      if (cell->face(i)->at_boundary())
+        boundary_ids.insert(cell->face(i)->boundary_id());
+    }
+  }
+}
+
+void
 Discretization::get_material_ids(std::set<unsigned int> & material_ids) const
 {
   material_ids.clear();

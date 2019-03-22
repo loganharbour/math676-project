@@ -20,6 +20,7 @@ class Discretization : public ParameterAcceptor
 public:
   Discretization();
 
+  void get_boundary_ids(std::set<unsigned int> & boundary_ids) const;
   void get_material_ids(std::set<unsigned int> & material_ids) const;
   void renumber_dofs(const unsigned int h);
   void setup();

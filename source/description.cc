@@ -26,9 +26,10 @@ Description::Description() : ParameterAcceptor("Description")
 }
 
 void
-Description::setup(const std::set<unsigned int> & mesh_material_ids)
+Description::setup(const std::set<unsigned int> & mesh_boundary_ids,
+                   const std::set<unsigned int> & mesh_material_ids)
 {
-  setup_bcs();
+  setup_bcs(mesh_boundary_ids);
   setup_materials(mesh_material_ids);
 }
 
@@ -66,12 +67,16 @@ Description::setup_materials(const std::set<unsigned int> & mesh_material_ids)
 }
 
 void
-Description::setup_bcs()
+Description::setup_bcs(const std::set<unsigned int> & mesh_boundary_ids)
 {
   fill_bcs(BCTypes::Perpendicular, perpendicular_boundary_ids, &perpendicular_boundary_fluxes);
   fill_bcs(BCTypes::Isotropic, isotropic_boundary_ids, &isotropic_boundary_fluxes);
   fill_bcs(BCTypes::Reflective, reflective_boundary_ids);
   fill_bcs(BCTypes::Vacuum, vacuum_boundary_ids);
+
+  for (auto it = mesh_boundary_ids.begin(); it != mesh_boundary_ids.end(); ++it)
+    if (bcs.find(*it) == bcs.end())
+      throw ExcMessage("Material boundary condition for id " + std::to_string(*it));
 }
 
 void
