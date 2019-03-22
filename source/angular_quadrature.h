@@ -37,7 +37,7 @@ public:
   double w(const unsigned int d) const { return weights[d]; }
 
 private:
-  // Number of directions
+  /// Number of directions
   unsigned int N;
 
   /// Quadrature directions

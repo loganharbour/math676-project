@@ -28,6 +28,7 @@ public:
 
   /// Solve all directions
   void solve_directions();
+
 private:
   /// Solve and fill scalar flux for angular direction d
   void solve_direction(const unsigned int d);
@@ -62,10 +63,10 @@ private:
   Vector<double> & scalar_flux_old;
 
   /// System matrix used in solving a single direction
-  SparseMatrix<double> matrix;
+  SparseMatrix<double> system_matrix;
   /// System right hand side used in solving a single direction
-  Vector<double> rhs;
-  /// System solution used in solving a single direction
+  Vector<double> system_rhs;
+  /// Storage for the angular flux solution for a single direction
   Vector<double> solution;
   /// InfoBox for MeshWorker
   MeshWorker::IntegrationInfoBox<2> info_box;

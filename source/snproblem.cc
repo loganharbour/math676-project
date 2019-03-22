@@ -28,8 +28,8 @@ void
 SNProblem::setup()
 {
   // Initialize system storage for a single direction
-  rhs.reinit(dof_handler.n_dofs());
-  matrix.reinit(discretization.get_sparsity_pattern());
+  system_rhs.reinit(dof_handler.n_dofs());
+  system_matrix.reinit(discretization.get_sparsity_pattern());
   solution.reinit(dof_handler.n_dofs());
 
   // Setup InfoBox for MeshWorker
@@ -41,7 +41,7 @@ SNProblem::setup()
   info_box.initialize(dof_handler.get_fe(), discretization.get_mapping());
 
   // Pass the matrix and rhs to the assembler
-  assembler.initialize(matrix, rhs);
+  assembler.initialize(system_matrix, system_rhs);
 }
 
 void
@@ -73,8 +73,8 @@ SNProblem::solve_direction(const unsigned int d)
   SolverControl solver_control(1000, 1e-12);
   SolverRichardson<> solver(solver_control);
   PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
-  preconditioner.initialize(matrix, dof_handler.get_fe().dofs_per_cell);
-  solver.solve(matrix, solution, rhs, preconditioner);
+  preconditioner.initialize(system_matrix, dof_handler.get_fe().dofs_per_cell);
+  solver.solve(system_matrix, solution, system_rhs, preconditioner);
 
   std::cout << "  Direction " << d << " converged after " << solver_control.last_step()
             << " Richardson iterations " << std::endl;
@@ -95,8 +95,8 @@ void
 SNProblem::assemble_direction(const Tensor<1, 2> & dir, const bool renumber_flux)
 {
   // Zero lhs and rhs before assembly
-  matrix = 0;
-  rhs = 0;
+  system_matrix = 0;
+  system_rhs = 0;
 
   // Lambda functions for passing into MeshWorker::loop
   const auto cell_worker = [&](DoFInfo & dinfo, CellInfo & info) {

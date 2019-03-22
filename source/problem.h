@@ -49,10 +49,11 @@ private:
   void setup();
   /// Primary solver for the Problem
   void solve();
+
+  /// Compute the L2 norm of (scalar_flux - scalar_flux_old) for checking convergence
+  double scalar_flux_L2() const;
   /// Build and save .vtu output
   void output_vtu() const;
-
-  double scalar_flux_L2() const;
 
   /// Problem description that holds material properties, boundary conditions, etc
   Description description;
@@ -77,7 +78,7 @@ private:
   /// Vtu output filename
   std::string vtu_filename = "output";
   /// Maximum source iterations
-  unsigned int max_its = 200;
+  unsigned int max_its = 1000;
   /// Source iteration tolerance
   double source_iteration_tol = 1.0e-12;
 };

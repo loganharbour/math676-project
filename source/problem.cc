@@ -15,7 +15,7 @@ Problem::Problem()
   // .vtu output filename (default: output); no output if empty
   add_parameter("vtu_filename", vtu_filename);
 
-  // Maximum source iterations (default: 200)
+  // Maximum source iterations (default: 1000)
   add_parameter("max_source_iterations", max_its);
   // Source iteration tolerance (defaut: 1e-12)
   add_parameter("source_iteration_tolerance", source_iteration_tol);
@@ -27,11 +27,11 @@ Problem::run()
   setup();
   solve();
 
+  // Ouput scalar_flux in .vtu format if filename is given
   if (vtu_filename.length() != 0)
     output_vtu();
 }
 
-void
 Problem::setup()
 {
   // Setup mesh
@@ -44,7 +44,7 @@ Problem::setup()
   scalar_flux.reinit(dof_handler.n_dofs());
   scalar_flux_old.reinit(dof_handler.n_dofs());
 
-  // Setup additional problems
+  // Setup the problems
   sn.setup();
   dsa.setup();
 }
@@ -63,15 +63,17 @@ Problem::solve()
     if (!description.has_scattering())
       return;
 
-    // Solve DSA
+    // Solve for DSA scalar flux correction
     dsa.solve();
 
-    // Check for convergence
+    // Compute L2 norm of (scalar_flux - scalar_flux_old) and store
     const double norm = scalar_flux_L2();
     residuals.emplace_back(norm);
     std::cout << "  Scalar flux L2 difference: " << std::scientific << std::setprecision(2) << norm
               << std::endl
               << std::endl;
+
+    // Exit if converged
     if (norm < source_iteration_tol)
       return;
   }

@@ -25,14 +25,15 @@ public:
 
   /// Initial setup for the DSAProblem
   void setup();
-
+  // Solve the DSAProblem
   void solve();
 
+  /// Whether or not DSA is enabled
   bool is_enabled() const { return enabled; }
 
 private:
+  /// Assemble the initial LHS and RHS (dsa_matrix, dsa_rhs), which remain constant
   void assemble_initial();
-  void assemble();
   /// Initial cell integration term for MeshWorker
   void integrate_cell_initial(DoFInfo & dinfo, CellInfo & info) const;
   /// Initial boundary integration term for MeshWorker
@@ -42,7 +43,10 @@ private:
                               DoFInfo & dinfo2,
                               CellInfo & info1,
                               CellInfo & info2) const;
-  ///  integration term for MeshWorker
+
+  /// Assemble the components of the LHS and RHS that change with each iteration
+  void assemble();
+  /// Cell integration term for MeshWorker
   void integrate_cell(DoFInfo & dinfo, CellInfo & info) const;
   /// Boundary integration term for MeshWorker
   void integrate_boundary(DoFInfo & dinfo, CellInfo & info) const;
@@ -60,15 +64,15 @@ private:
   /// Access the old scalar flux DGFEM solution in the Problem
   const Vector<double> & scalar_flux_old;
 
-  /// Matrix that holds the constant DSA LHS (filled once)
+  /// Matrix that holds the constant DSA LHS (filled once on setup)
   SparseMatrix<double> dsa_matrix;
   /// Matrix used for solving the problem
   SparseMatrix<double> system_matrix;
-  /// Vector that holds the constant DSA RHS (filled once)
+  /// Vector that holds the constant DSA RHS (filled once on setup)
   Vector<double> dsa_rhs;
   /// RHS vector used for solving the problem
   Vector<double> system_rhs;
-  /// System scattering source/solution vector (used for both)
+  /// Storage for the error corrector solution
   Vector<double> solution;
   /// InfoBox for MeshWorker
   MeshWorker::IntegrationInfoBox<2> info_box;

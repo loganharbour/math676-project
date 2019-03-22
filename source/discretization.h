@@ -42,24 +42,24 @@ private:
   DoFHandler<2> dof_handler;
   SparsityPattern sparsity_pattern;
 
-  // The angular quadrature object
+  /// The angular quadrature object
   AngularQuadrature aq;
 
-  // Renumberings between half ranges (if enabled)
+  /// Renumberings between half ranges (if enabled)
   std::vector<std::vector<unsigned int>> renumberings;
 
-  // Boundary ids that exist on the mesh
+  /// Boundary ids that exist on the mesh
   std::set<unsigned int> boundary_ids;
-  // Material ids that exist on the mesh
+  /// Material ids that exist on the mesh
   std::set<unsigned int> material_ids;
 
-  // Angular quadrature order
+  /// Angular quadrature order
   unsigned int aq_order = 10;
-  // Mesh uniform refinements
+  /// Mesh uniform refinements
   unsigned int uniform_refinement = 0;
-  // Whether or not to renumber
+  /// Whether or not to renumber
   bool renumber = true;
-  // Hyper cube mesh bounds
+  /// Hyper cube mesh bounds
   std::vector<double> hypercube_bounds = {0, 10};
 };
 
