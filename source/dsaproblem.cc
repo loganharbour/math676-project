@@ -121,10 +121,6 @@ DSAProblem::assemble()
   const auto boundary_worker = [&](DoFInfo & dinfo, CellInfo & info) {
     DSAProblem::integrate_boundary(dinfo, info);
   };
-  const auto face_worker =
-      [&](DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2) {
-        DSAProblem::integrate_face(dinfo1, dinfo2, info1, info2);
-      };
 
   // Call loop to execute the integration
   MeshWorker::DoFInfo<2> dof_info(dof_handler);
@@ -135,7 +131,7 @@ DSAProblem::assemble()
       info_box,
       cell_worker,
       boundary_worker,
-      face_worker,
+      NULL,
       assembler);
 }
 
@@ -159,16 +155,9 @@ DSAProblem::integrate_cell(DoFInfo & dinfo, CellInfo & info) const
 }
 
 void
-DSAProblem::integrate_face(DoFInfo & /*dinfo1*/,
-                           DoFInfo & /*dinfo2*/,
-                           CellInfo & /*info1*/,
-                           CellInfo & /*info2*/) const
-{
-}
-
-void
 DSAProblem::integrate_boundary(DoFInfo & /*dinfo*/, CellInfo & /*info*/) const
 {
+  // Reflective BC correction will go here at some point
 }
 
 void

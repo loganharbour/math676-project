@@ -38,13 +38,14 @@ private:
   /// Initial boundary integration term for MeshWorker
   void integrate_boundary_initial(DoFInfo & dinfo, CellInfo & info) const;
   /// Initial face integration term for MeshWorker
-  void integrate_face_initial(DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2) const;
+  void integrate_face_initial(DoFInfo & dinfo1,
+                              DoFInfo & dinfo2,
+                              CellInfo & info1,
+                              CellInfo & info2) const;
   ///  integration term for MeshWorker
   void integrate_cell(DoFInfo & dinfo, CellInfo & info) const;
   /// Boundary integration term for MeshWorker
   void integrate_boundary(DoFInfo & dinfo, CellInfo & info) const;
-  /// Face integration term for MeshWorker
-  void integrate_face(DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2) const;
 
   /// Access to the description in the Problem
   const Description & description;
