@@ -126,28 +126,30 @@ DSAProblem::integrate_face(DoFInfo & dinfo1,
                            CellInfo & info1,
                            CellInfo & info2) const
 {
+  const auto & fe1 = info1.fe_values();
+  const auto & fe2 = info2.fe_values();
+
   // Diffusion coefficient in each cell
   const double D1 = description.get_material(dinfo1.cell->material_id()).D;
   const double D2 = description.get_material(dinfo2.cell->material_id()).D;
-  // Polynomial degrees on each face
-  const unsigned int deg1 = info1.fe_values().get_fe().tensor_degree();
-  const unsigned int deg2 = info2.fe_values().get_fe().tensor_degree();
+
   // Length of the cells in the orthogonal direction to this face
   const unsigned int n1 = GeometryInfo<2>::unit_normal_direction[dinfo1.face_number];
   const unsigned int n2 = GeometryInfo<2>::unit_normal_direction[dinfo2.face_number];
   const double h1 = dinfo1.cell->extent_in_direction(n1);
   const double h2 = dinfo2.cell->extent_in_direction(n2);
+  // Polynomial degrees on each face
+  const unsigned int deg1 = fe1.get_fe().tensor_degree();
+  const unsigned int deg2 = fe2.get_fe().tensor_degree();
   // Penalty coefficient
   const double c1 = 2 * deg1 * (deg1 + 1);
   const double c2 = 2 * deg2 * (deg2 + 1);
   const double kappa = std::fmax(0.5 * (c1 * D1 / h1 + c2 * D2 / h2), 0.25);
 
-  FullMatrix<double> & M11 = dinfo1.matrix(0, false).matrix;
-  FullMatrix<double> & M12 = dinfo1.matrix(0, true).matrix;
-  FullMatrix<double> & M21 = dinfo2.matrix(0, true).matrix;
-  FullMatrix<double> & M22 = dinfo2.matrix(0, false).matrix;
-  const auto & fe1 = info1.fe_values();
-  const auto & fe2 = info2.fe_values();
+  FullMatrix<double> & v1u1 = dinfo1.matrix(0, false).matrix;
+  FullMatrix<double> & v1u2 = dinfo1.matrix(0, true).matrix;
+  FullMatrix<double> & v2u1 = dinfo2.matrix(0, true).matrix;
+  FullMatrix<double> & v2u2 = dinfo2.matrix(0, false).matrix;
   const unsigned int n_dofs = fe1.dofs_per_cell;
   for (unsigned int q = 0; q < fe1.n_quadrature_points; ++q)
   {
@@ -155,55 +157,29 @@ DSAProblem::integrate_face(DoFInfo & dinfo1,
     const Tensor<1, 2> n = fe1.normal_vector(q);
     for (unsigned int i = 0; i < n_dofs; ++i)
     {
+      const double Ddnv1 = D1 * n * fe1.shape_grad(i, q);
+      const double Ddnv2 = D2 * n * fe2.shape_grad(i, q);
+      const double v1 = fe1.shape_value(i, q);
+      const double v2 = fe2.shape_value(i, q);
       for (unsigned int j = 0; j < n_dofs; ++j)
       {
-        // D_(1 or 2) * \delta_n * (u or v)_(1 or 2)
-        // Diffusion coefficient cell depends on the gradient cell
-        const double Ddnv1 = D1 * n * fe1.shape_grad(i, q);
-        const double Ddnv2 = D2 * n * fe2.shape_grad(i, q);
         const double Ddnu1 = D1 * n * fe1.shape_grad(j, q);
         const double Ddnu2 = D2 * n * fe2.shape_grad(j, q);
-        // v and u
-        const double v1 = fe1.shape_value(i, q);
-        const double v2 = fe2.shape_value(i, q);
         const double u1 = fe1.shape_value(j, q);
         const double u2 = fe2.shape_value(j, q);
-        // M11: v1 u1, M12: v1 u2, M21: v2 u1, M22: v2 u2
-        // Penalty term
-        M11(i, j) += kappa * JxW * v1 * u1;
-        M12(i, j) -= kappa * JxW * v1 * u2;
-        M21(i, j) -= kappa * JxW * v2 * u1;
-        M22(i, j) += kappa * JxW * v2 * u2;
-        // Term where gradient is on u (phi in paper)
-        M11(i, j) += 0.5 * JxW * v1 * Ddnu1;
-        M12(i, j) += 0.5 * JxW * v1 * Ddnu2;
-        M21(i, j) -= 0.5 * JxW * v2 * Ddnu1;
-        M22(i, j) -= 0.5 * JxW * v2 * Ddnu2;
-        // Term where gradaient is on v (phi* in paper)
-        M11(i, j) += 0.5 * JxW * Ddnv1 * u1;
-        M12(i, j) -= 0.5 * JxW * Ddnv1 * u2;
-        M21(i, j) += 0.5 * JxW * Ddnv2 * u1; // these signs may be switched,
-        M22(i, j) -= 0.5 * JxW * Ddnv2 * u2; // ip_matrix says they should be this
-                                             // but I disagree
+        v1u1(i, j) += JxW * (+kappa * v1 * u1 + 0.5 * (+v1 * Ddnu1 + Ddnv1 * u1));
+        v1u2(i, j) += JxW * (-kappa * v1 * u2 + 0.5 * (-v1 * Ddnu2 - Ddnv1 * u2));
+        v2u1(i, j) += JxW * (-kappa * v2 * u1 + 0.5 * (+v2 * Ddnu1 + Ddnv2 * u1));
+        v2u2(i, j) += JxW * (+kappa * v2 * u2 + 0.5 * (-v2 * Ddnu2 - Ddnv2 * u2));
       }
     }
   }
-  // Multiply penalty coefficient by 2 / (D1 + D2) to cancel out
-  // nu = (nui + nue) / 2 = 2 / (D1 + D2) in ip_matrix
-  // LocalIntegrators::Laplace::ip_matrix(dinfo1.matrix(0, false).matrix,
-  //                                      dinfo1.matrix(0, true).matrix,
-  //                                      dinfo2.matrix(0, true).matrix,
-  //                                      dinfo2.matrix(0, false).matrix,
-  //                                      info1.fe_values(),
-  //                                      info2.fe_values(),
-  //                                      2 * kappa / (D1 + D2),
-  //                                      D1,
-  //                                      D2);
 }
 
 void
 DSAProblem::integrate_boundary(DoFInfo & dinfo, CellInfo & info) const
 {
+  // Bounday condition type for this face
   const auto bc_type = description.get_bc(dinfo.face->boundary_id()).type;
 
   // Diffusion coefficient
@@ -212,11 +188,11 @@ DSAProblem::integrate_boundary(DoFInfo & dinfo, CellInfo & info) const
   // RHS contribution (for dirichlet BCs)
   if (bc_type != Description::BCTypes::Reflective)
   {
-    // Polynomial degrees on the face
-    const unsigned int deg = info.fe_values().get_fe().tensor_degree();
     // Length of the cell in the orthogonal direction to this face
     const unsigned int n = GeometryInfo<2>::unit_normal_direction[dinfo.face_number];
     const double h = dinfo.cell->extent_in_direction(n);
+    // Polynomial degrees on the face
+    const unsigned int deg = info.fe_values().get_fe().tensor_degree();
     // Penalty coefficient
     const double c = 2 * deg * (deg + 1);
     const double kappa = std::fmax(c * D / h, 0.25);
