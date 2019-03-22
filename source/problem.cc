@@ -17,6 +17,8 @@ Problem::Problem()
 
   // Maximum source iterations (default: 200)
   add_parameter("max_source_iterations", max_its);
+  // Source iteration tolerance (defaut: 1e-12)
+  add_parameter("source_iteration_tolerance", source_iteration_tol);
 }
 
 void
@@ -57,17 +59,51 @@ Problem::solve()
     std::cout << "Source iteration " << l << std::endl;
 
     // Solve all directions with SN
-    const bool sn_converged = sn.solve_directions();
+    sn.solve_directions();
 
-    // Done if we are converged
-    if (sn_converged)
+    // Do not iterate without scattering
+    if (!description.has_scattering())
       return;
 
-    // Not converged, run DSA if enabled
+    // Solve DSA
     dsa.solve();
+
+    // Check for convergence
+    const double norm = scalar_flux_L2();
+    residuals.emplace_back(norm);
+    std::cout << "  Scalar flux L2 difference: " << std::scientific << std::setprecision(2) << norm
+              << std::endl
+              << std::endl;
+    if (norm < source_iteration_tol)
+      return;
   }
 
   std::cout << "Did not converge after " << max_its << " source iterations!" << std::endl;
+}
+
+double
+Problem::scalar_flux_L2() const
+{
+  double value = 0;
+
+  const auto & fe = dof_handler.get_fe();
+  QGauss<2> quadrature(fe.degree + 1);
+  FEValues<2> fe_v(fe, quadrature, update_values | update_JxW_values);
+
+  std::vector<types::global_dof_index> indices(fe.dofs_per_cell);
+  for (const auto & cell : dof_handler.active_cell_iterators())
+  {
+    fe_v.reinit(cell);
+    cell->get_dof_indices(indices);
+    for (unsigned int i = 0; i < fe.dofs_per_cell; ++i)
+    {
+      const double diff = scalar_flux[indices[i]] - scalar_flux_old[indices[i]];
+      for (unsigned int q = 0; q < quadrature.size(); ++q)
+        value += std::pow(fe_v.shape_value(i, q) * diff, 2) * fe_v.JxW(q);
+    }
+  }
+
+  return value;
 }
 
 void

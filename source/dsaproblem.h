@@ -31,8 +31,15 @@ public:
   bool is_enabled() const { return enabled; }
 
 private:
+  void assemble_initial();
   void assemble();
-  /// Cell integration term for MeshWorker
+  /// Initial cell integration term for MeshWorker
+  void integrate_cell_initial(DoFInfo & dinfo, CellInfo & info) const;
+  /// Initial boundary integration term for MeshWorker
+  void integrate_boundary_initial(DoFInfo & dinfo, CellInfo & info) const;
+  /// Initial face integration term for MeshWorker
+  void integrate_face_initial(DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2) const;
+  ///  integration term for MeshWorker
   void integrate_cell(DoFInfo & dinfo, CellInfo & info) const;
   /// Boundary integration term for MeshWorker
   void integrate_boundary(DoFInfo & dinfo, CellInfo & info) const;
@@ -52,10 +59,14 @@ private:
   /// Access the old scalar flux DGFEM solution in the Problem
   Vector<double> & scalar_flux_old;
 
-  /// System matrix used in solving a single direction
-  SparseMatrix<double> matrix;
-  /// System right hand side used in solving a single direction
-  Vector<double> rhs;
+  /// Matrix that holds the constant DSA LHS (filled once)
+  SparseMatrix<double> dsa_matrix;
+  /// Matrix used for solving the problem
+  SparseMatrix<double> system_matrix;
+  /// Vector that holds the constant DSA RHS (filled once)
+  Vector<double> dsa_rhs;
+  /// RHS vector used for solving the problem
+  Vector<double> system_rhs;
   /// System scattering source/solution vector (used for both)
   Vector<double> solution;
   /// InfoBox for MeshWorker

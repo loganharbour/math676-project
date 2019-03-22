@@ -26,7 +26,6 @@ public:
 
   const AngularQuadrature & get_aq() const { return aq; }
   const DoFHandler<2> & get_dof_handler() const { return dof_handler; }
-  const FE_DGQ<2> & get_fe() const { return fe; }
   const MappingQ1<2> & get_mapping() const { return mapping; }
   const std::vector<unsigned int> & get_ref_renumbering() const { return renumberings[0]; }
   const unsigned int & get_ref_renumbering(unsigned int i) const { return renumberings[0][i]; }

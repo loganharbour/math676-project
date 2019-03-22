@@ -49,6 +49,8 @@ private:
   /// Build and save .vtu output
   void output_vtu() const;
 
+  double scalar_flux_L2() const;
+
   /// Problem description that holds material properties, boundary conditions, etc
   Description description;
   /// Problem discretization that holds the dof_handler and triangulation
@@ -66,10 +68,15 @@ private:
   /// Finite element representation of the scalar flux at the previous iteration
   Vector<double> scalar_flux_old;
 
+  /// Source iteration residuals
+  std::vector<double> residuals;
+
   /// Vtu output filename
   std::string vtu_filename = "output";
   /// Maximum source iterations
   unsigned int max_its = 200;
+  /// Source iteration tolerance
+  double source_iteration_tol = 1.0e-12;
 };
 } // namespace RadProblem
 

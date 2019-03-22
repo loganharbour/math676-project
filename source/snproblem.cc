@@ -22,8 +22,6 @@ SNProblem::SNProblem(Problem & problem)
     scalar_flux(problem.get_scalar_flux()),
     scalar_flux_old(problem.get_scalar_flux_old())
 {
-  // Source iteration tolerance (defaut: 1e-12)
-  add_parameter("source_iteration_tolerance", source_iteration_tolerance);
 }
 
 void
@@ -40,13 +38,13 @@ SNProblem::setup()
   info_box.initialize_update_flags();
   UpdateFlags update_flags = update_quadrature_points | update_values | update_gradients;
   info_box.add_update_flags(update_flags, true, true, true, true);
-  info_box.initialize(discretization.get_fe(), discretization.get_mapping());
+  info_box.initialize(dof_handler.get_fe(), discretization.get_mapping());
 
   // Pass the matrix and rhs to the assembler
   assembler.initialize(matrix, rhs);
 }
 
-bool
+void
 SNProblem::solve_directions()
 {
   // Copy to old scalar flux and zero scalar flux for update
@@ -56,23 +54,6 @@ SNProblem::solve_directions()
   // Solve each direction
   for (unsigned int d = 0; d < aq.n_dir(); ++d)
     solve_direction(d);
-
-  // No source iterations without scattering: converged
-  if (!description.has_scattering())
-    return true;
-
-  // Check convergence
-  const double norm = L2_difference(scalar_flux, scalar_flux_old);
-  residuals.push_back(norm);
-  std::cout << "  Scalar flux L2 difference: " << std::scientific << std::setprecision(2) << norm
-            << std::endl;
-
-  // Converged
-  if (norm < source_iteration_tolerance)
-    return true;
-  // Not converged
-  else
-    return false;
 }
 
 void
@@ -95,7 +76,7 @@ SNProblem::solve_direction(const unsigned int d)
     SolverControl solver_control(1000, 1e-12);
     SolverRichardson<> solver(solver_control);
     PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
-    preconditioner.initialize(matrix, discretization.get_fe().dofs_per_cell);
+    preconditioner.initialize(matrix, dof_handler.get_fe().dofs_per_cell);
     solver.solve(matrix, solution, rhs, preconditioner);
     std::cout << "  Direction " << d << " converged after " << solver_control.last_step()
               << " Richardson iterations " << std::endl;
@@ -104,7 +85,7 @@ SNProblem::solve_direction(const unsigned int d)
   else
   {
     PreconditionBlockSOR<SparseMatrix<double>> preconditioner;
-    preconditioner.initialize(matrix, discretization.get_fe().dofs_per_cell);
+    preconditioner.initialize(matrix, dof_handler.get_fe().dofs_per_cell);
     preconditioner.step(solution, rhs);
   }
 
@@ -291,38 +272,6 @@ SNProblem::integrate_face(DoFInfo & dinfo1,
       for (unsigned int i = 0; i < fe_v_in.dofs_per_cell; ++i)
         uout_vin_matrix(i, j) -= coeff * fe_v_in.shape_value(i, q);
     }
-}
-
-double
-SNProblem::L2_difference(const Vector<double> & v1, const Vector<double> & v2)
-{
-  double value = 0;
-
-  const auto cell_worker = [&](DoFInfo & dinfo, CellInfo & info) {
-    const FEValuesBase<2> & fe_v = info.fe_values();
-    const std::vector<double> & JxW = fe_v.get_JxW_values();
-
-    for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
-    {
-      const double diff_i = v1[dinfo.indices[i]] - v2[dinfo.indices[i]];
-      for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
-        value += std::pow(fe_v.shape_value(i, q) * diff_i, 2) * JxW[q];
-    }
-  };
-
-  // Call loop to execute the integration
-  MeshWorker::DoFInfo<2> dof_info(dof_handler);
-  MeshWorker::loop<2, 2, MeshWorker::DoFInfo<2>, MeshWorker::IntegrationInfoBox<2>>(
-      dof_handler.begin_active(),
-      dof_handler.end(),
-      dof_info,
-      info_box,
-      cell_worker,
-      NULL,
-      NULL,
-      assembler);
-
-  return value;
 }
 
 } // namespace RadProblem
