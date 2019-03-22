@@ -58,7 +58,7 @@ private:
   /// Access the scalar flux DGFEM solution in the Problem
   Vector<double> & scalar_flux;
   /// Access the old scalar flux DGFEM solution in the Problem
-  Vector<double> & scalar_flux_old;
+  const Vector<double> & scalar_flux_old;
 
   /// Matrix that holds the constant DSA LHS (filled once)
   SparseMatrix<double> dsa_matrix;

@@ -32,6 +32,7 @@ public:
 
   Vector<double> & get_scalar_flux() { return scalar_flux; }
   Vector<double> & get_scalar_flux_old() { return scalar_flux_old; }
+  const Vector<double> & get_scalar_flux_old() const { return scalar_flux_old; }
 
   template <typename T>
   static void saveVector(const std::vector<T> & v, const std::string filename)
