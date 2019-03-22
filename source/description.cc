@@ -76,7 +76,7 @@ Description::setup_bcs(const std::set<unsigned int> & mesh_boundary_ids)
 
   for (auto it = mesh_boundary_ids.begin(); it != mesh_boundary_ids.end(); ++it)
     if (bcs.find(*it) == bcs.end())
-      throw ExcMessage("Material boundary condition for id " + std::to_string(*it));
+      throw ExcMessage("Missing boundary condition for boundary id " + std::to_string(*it));
 }
 
 void
