@@ -19,7 +19,6 @@ DSAProblem::DSAProblem(Problem & problem)
     description(problem.get_description()),
     discretization(problem.get_discretization()),
     dof_handler(discretization.get_dof_handler()),
-    aq(discretization.get_aq()),
     scalar_flux(problem.get_scalar_flux()),
     scalar_flux_old(problem.get_scalar_flux_old())
 {
@@ -105,7 +104,6 @@ DSAProblem::assemble_initial()
       face_worker,
       initial_assembler);
 }
-
 
 void
 DSAProblem::assemble()

@@ -57,8 +57,6 @@ private:
   const Discretization & discretization;
   /// Access to the dof_handler in the Description
   const DoFHandler<2> & dof_handler;
-  /// Access to the angular quadrature
-  const AngularQuadrature & aq;
   /// Access the scalar flux DGFEM solution in the Problem
   Vector<double> & scalar_flux;
   /// Access the old scalar flux DGFEM solution in the Problem
