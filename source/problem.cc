@@ -37,12 +37,8 @@ Problem::setup()
   // Setup mesh
   discretization.setup();
 
-  // Setup description (which checks for BC and material coverage)
-  std::set<unsigned int> mesh_boundary_ids;
-  discretization.get_boundary_ids(mesh_boundary_ids);
-  std::set<unsigned int> mesh_material_ids;
-  discretization.get_material_ids(mesh_material_ids);
-  description.setup(mesh_boundary_ids, mesh_material_ids);
+  // Setup description (needs discretization for bc/material coverage)
+  description.setup(discretization);
 
   // Resize scalar flux variables
   scalar_flux.reinit(dof_handler.n_dofs());

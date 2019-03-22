@@ -20,14 +20,14 @@ class Discretization : public ParameterAcceptor
 public:
   Discretization();
 
-  void get_boundary_ids(std::set<unsigned int> & boundary_ids) const;
-  void get_material_ids(std::set<unsigned int> & material_ids) const;
   void renumber_dofs(const unsigned int h);
   void setup();
 
   const AngularQuadrature & get_aq() const { return aq; }
+  const std::set<unsigned int> & get_boundary_ids() const { return boundary_ids; }
   const DoFHandler<2> & get_dof_handler() const { return dof_handler; }
   const MappingQ1<2> & get_mapping() const { return mapping; }
+  const std::set<unsigned int> & get_material_ids() const { return material_ids; }
   const std::vector<unsigned int> & get_ref_renumbering() const { return renumberings[0]; }
   const unsigned int & get_ref_renumbering(unsigned int i) const { return renumberings[0][i]; }
   const SparsityPattern & get_sparsity_pattern() const { return sparsity_pattern; }
@@ -47,6 +47,11 @@ private:
 
   // Renumberings between half ranges (if enabled)
   std::vector<std::vector<unsigned int>> renumberings;
+
+  // Boundary ids that exist on the mesh
+  std::set<unsigned int> boundary_ids;
+  // Material ids that exist on the mesh
+  std::set<unsigned int> material_ids;
 
   // Angular quadrature order
   unsigned int aq_order = 10;

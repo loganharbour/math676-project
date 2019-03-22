@@ -64,30 +64,17 @@ Discretization::generate_mesh()
 
   // Refine if requested
   triangulation.refine_global(uniform_refinement);
-}
 
-void
-Discretization::get_boundary_ids(std::set<unsigned int> & boundary_ids) const
-{
-  boundary_ids.clear();
+  // Fill the boundary and material ids that exist on the mesh
   for (const auto & cell : dof_handler.active_cell_iterators())
   {
+    material_ids.insert(cell->material_id());
     if (!cell->at_boundary())
       continue;
     for (unsigned int i = 0; i < GeometryInfo<2>::faces_per_cell; ++i)
-    {
       if (cell->face(i)->at_boundary())
         boundary_ids.insert(cell->face(i)->boundary_id());
-    }
   }
-}
-
-void
-Discretization::get_material_ids(std::set<unsigned int> & material_ids) const
-{
-  material_ids.clear();
-  for (const auto & cell : dof_handler.active_cell_iterators())
-    material_ids.insert(cell->material_id());
 }
 
 void

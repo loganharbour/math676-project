@@ -7,6 +7,10 @@
 
 namespace RadProblem
 {
+
+// Forward declarations
+class Discretization;
+
 class Description : public dealii::ParameterAcceptor
 {
 public:
@@ -56,8 +60,7 @@ public:
   };
 
   // Setup to be called by the Problem
-  void setup(const std::set<unsigned int> & mesh_boundary_ids,
-             const std::set<unsigned int> & mesh_material_ids);
+  void setup(const Discretization & discretization);
 
   // Get the bc for boundary_id
   const BC & get_bc(const unsigned int boundary_id) const;

@@ -1,4 +1,5 @@
 #include "description.h"
+#include "discretization.h"
 
 #include <deal.II/base/exceptions.h>
 
@@ -26,11 +27,10 @@ Description::Description() : ParameterAcceptor("Description")
 }
 
 void
-Description::setup(const std::set<unsigned int> & mesh_boundary_ids,
-                   const std::set<unsigned int> & mesh_material_ids)
+Description::setup(const Discretization & discretization)
 {
-  setup_bcs(mesh_boundary_ids);
-  setup_materials(mesh_material_ids);
+  setup_bcs(discretization.get_boundary_ids());
+  setup_materials(discretization.get_material_ids());
 }
 
 void
