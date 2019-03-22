@@ -196,10 +196,13 @@ SNProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
   // Dot product between the direction and the outgoing normal
   const double dir_dot_n = dir * info.fe_values().normal_vector(0);
 
-  // Face is incoming: check incident boundary conditions; if we have only
-  // vacuum conditions, there is nothing to do here
-  if (dir_dot_n < 0 && description.has_incident_bcs())
+  // Face is incoming
+  if (dir_dot_n)
   {
+    // Nothing to do for incoming without incident boundary conditions
+    if (!description.has_incident_bcs())
+      return;
+
     const auto & bc = description.get_bc(dinfo.face->boundary_id());
 
     double bc_value = 0;
