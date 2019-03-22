@@ -11,7 +11,7 @@ main(int argc, char ** argv)
   try
   {
     // Initialize problem
-    Problem problem;
+    Problem<2> problem;
 
     // Load the parameter file
     std::string parameter_file;

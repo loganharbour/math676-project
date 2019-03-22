@@ -1,5 +1,6 @@
 #include "snproblem.h"
 
+#include "angular_quadrature.h"
 #include "description.h"
 #include "discretization.h"
 #include "problem.h"
@@ -13,7 +14,8 @@ namespace RadProblem
 {
 using namespace dealii;
 
-SNProblem::SNProblem(Problem & problem)
+template <int dim>
+SNProblem<dim>::SNProblem(Problem<dim> & problem)
   : ParameterAcceptor("SNProblem"),
     description(problem.get_description()),
     discretization(problem.get_discretization()),
@@ -24,8 +26,9 @@ SNProblem::SNProblem(Problem & problem)
 {
 }
 
+template <int dim>
 void
-SNProblem::setup()
+SNProblem<dim>::setup()
 {
   // Initialize system storage for a single direction
   system_rhs.reinit(dof_handler.n_dofs());
@@ -44,8 +47,9 @@ SNProblem::setup()
   assembler.initialize(system_matrix, system_rhs);
 }
 
+template <int dim>
 void
-SNProblem::solve_directions()
+SNProblem<dim>::solve_directions()
 {
   // Copy to old scalar flux and zero scalar flux for update
   scalar_flux_old = scalar_flux;
@@ -56,8 +60,9 @@ SNProblem::solve_directions()
     solve_direction(d);
 }
 
+template <int dim>
 void
-SNProblem::solve_direction(const unsigned int d)
+SNProblem<dim>::solve_direction(const unsigned int d)
 {
   // See if renumbering is required
   const unsigned int half = (d < aq.n_dir() / 2 ? 0 : 1);
@@ -91,28 +96,33 @@ SNProblem::solve_direction(const unsigned int d)
     scalar_flux.add(weight, solution);
 }
 
+template <int dim>
 void
-SNProblem::assemble_direction(const Tensor<1, 2> & dir, const bool renumber_flux)
+SNProblem<dim>::assemble_direction(const Tensor<1, dim> & dir, const bool renumber_flux)
 {
   // Zero lhs and rhs before assembly
   system_matrix = 0;
   system_rhs = 0;
 
   // Lambda functions for passing into MeshWorker::loop
-  const auto cell_worker = [&](DoFInfo & dinfo, CellInfo & info) {
+  const auto cell_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
+                               MeshWorker::IntegrationInfo<dim> & info) {
     SNProblem::integrate_cell(dinfo, info, dir, renumber_flux);
   };
-  const auto boundary_worker = [&](DoFInfo & dinfo, CellInfo & info) {
+  const auto boundary_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
+                                   MeshWorker::IntegrationInfo<dim> & info) {
     SNProblem::integrate_boundary(dinfo, info, dir);
   };
-  const auto face_worker =
-      [&](DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2) {
-        SNProblem::integrate_face(dinfo1, dinfo2, info1, info2, dir);
-      };
+  const auto face_worker = [&](MeshWorker::DoFInfo<dim> & dinfo1,
+                               MeshWorker::DoFInfo<dim> & dinfo2,
+                               MeshWorker::IntegrationInfo<dim> & info1,
+                               MeshWorker::IntegrationInfo<dim> & info2) {
+    SNProblem::integrate_face(dinfo1, dinfo2, info1, info2, dir);
+  };
 
   // Call loop to execute the integration
-  MeshWorker::DoFInfo<2> dof_info(dof_handler);
-  MeshWorker::loop<2, 2, MeshWorker::DoFInfo<2>, MeshWorker::IntegrationInfoBox<2>>(
+  MeshWorker::DoFInfo<dim> dof_info(dof_handler);
+  MeshWorker::loop<dim, dim, MeshWorker::DoFInfo<dim>, MeshWorker::IntegrationInfoBox<dim>>(
       dof_handler.begin_active(),
       dof_handler.end(),
       dof_info,
@@ -123,13 +133,14 @@ SNProblem::assemble_direction(const Tensor<1, 2> & dir, const bool renumber_flux
       assembler);
 }
 
+template <int dim>
 void
-SNProblem::integrate_cell(DoFInfo & dinfo,
-                          CellInfo & info,
-                          const Tensor<1, 2> & dir,
-                          const bool renumber_flux) const
+SNProblem<dim>::integrate_cell(MeshWorker::DoFInfo<dim> & dinfo,
+                               MeshWorker::IntegrationInfo<dim> & info,
+                               const Tensor<1, dim> & dir,
+                               const bool renumber_flux) const
 {
-  const FEValuesBase<2> & fe_v = info.fe_values();
+  const FEValuesBase<dim> & fe_v = info.fe_values();
   FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
   Vector<double> & local_vector = dinfo.vector(0).block(0);
   const std::vector<double> & JxW = fe_v.get_JxW_values();
@@ -176,8 +187,11 @@ SNProblem::integrate_cell(DoFInfo & dinfo,
     }
 }
 
+template <int dim>
 void
-SNProblem::integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 2> & dir) const
+SNProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
+                                   MeshWorker::IntegrationInfo<dim> & info,
+                                   const Tensor<1, dim> & dir) const
 {
   // Dot product between the direction and the outgoing normal
   const double dir_dot_n = dir * info.fe_values().normal_vector(0);
@@ -191,18 +205,18 @@ SNProblem::integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 
     double bc_value = 0;
     switch (bc.type)
     {
-      case Description::BCTypes::Vacuum:
+      case BCTypes::Vacuum:
         return;
-      case Description::BCTypes::Isotropic:
+      case BCTypes::Isotropic:
         bc_value = bc.value;
         break;
-      case Description::BCTypes::Reflective:
+      case BCTypes::Reflective:
         throw ExcMessage("Reflective bc not supported yet");
-      case Description::BCTypes::Perpendicular:
+      case BCTypes::Perpendicular:
         throw ExcMessage("Perpendicular bc not supported yet");
     }
 
-    const FEValuesBase<2> & fe_v = info.fe_values();
+    const FEValuesBase<dim> & fe_v = info.fe_values();
     Vector<double> & local_vector = dinfo.vector(0).block(0);
     const std::vector<double> & JxW = fe_v.get_JxW_values();
 
@@ -213,7 +227,7 @@ SNProblem::integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 
   // Face is outgoing
   else
   {
-    const FEValuesBase<2> & fe_v = info.fe_values();
+    const FEValuesBase<dim> & fe_v = info.fe_values();
     FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
     const std::vector<double> & JxW = fe_v.get_JxW_values();
 
@@ -227,12 +241,13 @@ SNProblem::integrate_boundary(DoFInfo & dinfo, CellInfo & info, const Tensor<1, 
   }
 }
 
+template <int dim>
 void
-SNProblem::integrate_face(DoFInfo & dinfo1,
-                          DoFInfo & dinfo2,
-                          CellInfo & info1,
-                          CellInfo & info2,
-                          const Tensor<1, 2> & dir) const
+SNProblem<dim>::integrate_face(MeshWorker::DoFInfo<dim> & dinfo1,
+                               MeshWorker::DoFInfo<dim> & dinfo2,
+                               MeshWorker::IntegrationInfo<dim> & info1,
+                               MeshWorker::IntegrationInfo<dim> & info2,
+                               const Tensor<1, dim> & dir) const
 {
   // Dot product between the direction and the outgoing normal of face 1
   const double dir_dot_n1 = dir * info1.fe_values().normal_vector(0);
@@ -263,5 +278,17 @@ SNProblem::integrate_face(DoFInfo & dinfo1,
         uout_vin_matrix(i, j) -= coeff * fe_v_in.shape_value(i, q);
     }
 }
+
+template SNProblem<1>::SNProblem(Problem<1> & problem);
+template SNProblem<2>::SNProblem(Problem<2> & problem);
+template SNProblem<3>::SNProblem(Problem<3> & problem);
+
+template void SNProblem<1>::setup();
+template void SNProblem<2>::setup();
+template void SNProblem<3>::setup();
+
+template void SNProblem<1>::solve_directions();
+template void SNProblem<2>::solve_directions();
+template void SNProblem<3>::solve_directions();
 
 } // namespace RadProblem

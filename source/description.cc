@@ -9,7 +9,8 @@ namespace RadProblem
 {
 using namespace dealii;
 
-Description::Description() : ParameterAcceptor("Description")
+template <int dim>
+Description<dim>::Description() : ParameterAcceptor("Description")
 {
   // Add material parameters (default: empty)
   add_parameter("material_ids", material_ids);
@@ -26,15 +27,17 @@ Description::Description() : ParameterAcceptor("Description")
   add_parameter("vacuum_boundary_ids", vacuum_boundary_ids); // default: {0}
 }
 
+template <int dim>
 void
-Description::setup(const Discretization & discretization)
+Description<dim>::setup(const Discretization<dim> & discretization)
 {
   setup_bcs(discretization.get_boundary_ids());
   setup_materials(discretization.get_material_ids());
 }
 
+template <int dim>
 void
-Description::setup_materials(const std::set<unsigned int> & mesh_material_ids)
+Description<dim>::setup_materials(const std::set<unsigned int> & mesh_material_ids)
 {
   // Make sure all material vectors are the same size
   const auto & double_inputs = {material_sigma_t, material_sigma_s, material_src};
@@ -66,8 +69,9 @@ Description::setup_materials(const std::set<unsigned int> & mesh_material_ids)
   }
 }
 
+template <int dim>
 void
-Description::setup_bcs(const std::set<unsigned int> & mesh_boundary_ids)
+Description<dim>::setup_bcs(const std::set<unsigned int> & mesh_boundary_ids)
 {
   fill_bcs(BCTypes::Perpendicular, perpendicular_boundary_ids, &perpendicular_boundary_fluxes);
   fill_bcs(BCTypes::Isotropic, isotropic_boundary_ids, &isotropic_boundary_fluxes);
@@ -79,10 +83,11 @@ Description::setup_bcs(const std::set<unsigned int> & mesh_boundary_ids)
       throw ExcMessage("Missing boundary condition for boundary id " + std::to_string(*it));
 }
 
+template <int dim>
 void
-Description::fill_bcs(const BCTypes type,
-                      const std::vector<unsigned int> & ids,
-                      const std::vector<double> * values)
+Description<dim>::fill_bcs(const BCTypes type,
+                           const std::vector<unsigned int> & ids,
+                           const std::vector<double> * values)
 {
   // Check for uniqueness
   for (unsigned int id : ids)
@@ -110,20 +115,38 @@ Description::fill_bcs(const BCTypes type,
     incident_bcs = true;
 }
 
-const Description::BC &
-Description::get_bc(const unsigned int boundary_id) const
+template <int dim>
+const BC &
+Description<dim>::get_bc(const unsigned int boundary_id) const
 {
   const auto search = bcs.find(boundary_id);
   Assert(search != bcs.end(), ExcMessage("Boundary id not found in BC map"));
   return search->second;
 }
 
-const Description::Material &
-Description::get_material(const unsigned int material_id) const
+template <int dim>
+const Material &
+Description<dim>::get_material(const unsigned int material_id) const
 {
   const auto search = materials.find(material_id);
   Assert(search != materials.end(), ExcMessage("Material id not found in material map"));
   return search->second;
 }
+
+template Description<1>::Description();
+template Description<2>::Description();
+template Description<3>::Description();
+
+template void Description<1>::setup(const Discretization<1> & discretization);
+template void Description<2>::setup(const Discretization<2> & discretization);
+template void Description<3>::setup(const Discretization<3> & discretization);
+
+template const BC & Description<1>::get_bc(const unsigned int boundary_id) const;
+template const BC & Description<2>::get_bc(const unsigned int boundary_id) const;
+template const BC & Description<3>::get_bc(const unsigned int boundary_id) const;
+
+template const Material & Description<1>::get_material(const unsigned int material_id) const;
+template const Material & Description<2>::get_material(const unsigned int material_id) const;
+template const Material & Description<3>::get_material(const unsigned int material_id) const;
 
 } // namespace RadProblem

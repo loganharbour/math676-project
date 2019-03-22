@@ -1,6 +1,8 @@
 #ifndef DESCRIPTION_H
 #define DESCRIPTION_H
 
+#include "discretization.h"
+
 #include <deal.II/base/parameter_acceptor.h>
 
 #include <map>
@@ -8,59 +10,57 @@
 namespace RadProblem
 {
 
-// Forward declarations
-class Discretization;
+// The possible boundary condition types
+enum BCTypes
+{
+  Isotropic,
+  Perpendicular,
+  Reflective,
+  Vacuum
+};
 
+// Struct for boundary condition storage
+struct BC
+{
+  BC(const BCTypes type, const double value = 0) : type(type), value(value) {}
+  // The boundary condition type
+  const BCTypes type;
+  // The boundary condition value (if applicable)
+  const double value;
+};
+
+// Struct for material storage
+struct Material
+{
+  Material(const double sigma_t, const double sigma_s, const double src)
+    : D(1.0 / (3 * sigma_t)),
+      sigma_t(sigma_t),
+      sigma_s(sigma_s),
+      sigma_a(sigma_t - sigma_s),
+      src(src)
+  {
+  }
+
+  // Diffusion coefficient [cm]
+  const double D;
+  // Macroscopic total cross section [1/cm]
+  const double sigma_t;
+  // Macroscopic scattering cross section [1/cm]
+  const double sigma_s;
+  // Macroscopic absorption cross section [1/cm]
+  const double sigma_a;
+  // Volumetric source term [p/cm^3]
+  const double src;
+};
+
+template <int dim>
 class Description : public dealii::ParameterAcceptor
 {
 public:
   Description();
 
-  // The possible boundary condition types
-  enum BCTypes
-  {
-    Isotropic,
-    Perpendicular,
-    Reflective,
-    Vacuum
-  };
-
-  // Struct for boundary condition storage
-  struct BC
-  {
-    BC(const BCTypes type, const double value = 0) : type(type), value(value) {}
-    // The boundary condition type
-    const BCTypes type;
-    // The boundary condition value (if applicable)
-    const double value;
-  };
-
-  // Struct for material storage
-  struct Material
-  {
-    Material(const double sigma_t, const double sigma_s, const double src)
-      : D(1.0 / (3 * sigma_t)),
-        sigma_t(sigma_t),
-        sigma_s(sigma_s),
-        sigma_a(sigma_t - sigma_s),
-        src(src)
-    {
-    }
-
-    // Diffusion coefficient [cm]
-    const double D;
-    // Macroscopic total cross section [1/cm]
-    const double sigma_t;
-    // Macroscopic scattering cross section [1/cm]
-    const double sigma_s;
-    // Macroscopic absorption cross section [1/cm]
-    const double sigma_a;
-    // Volumetric source term [p/cm^3]
-    const double src;
-  };
-
   // Setup to be called by the Problem
-  void setup(const Discretization & discretization);
+  void setup(const Discretization<dim> & discretization);
 
   // Get the bc for boundary_id
   const BC & get_bc(const unsigned int boundary_id) const;

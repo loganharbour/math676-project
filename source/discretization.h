@@ -15,6 +15,7 @@ namespace RadProblem
 {
 using namespace dealii;
 
+template <int dim>
 class Discretization : public ParameterAcceptor
 {
 public:
@@ -23,10 +24,10 @@ public:
   void renumber_dofs(const unsigned int h);
   void setup();
 
-  const AngularQuadrature & get_aq() const { return aq; }
+  const AngularQuadrature<dim> & get_aq() const { return aq; }
   const std::set<unsigned int> & get_boundary_ids() const { return boundary_ids; }
-  const DoFHandler<2> & get_dof_handler() const { return dof_handler; }
-  const MappingQ1<2> & get_mapping() const { return mapping; }
+  const DoFHandler<dim> & get_dof_handler() const { return dof_handler; }
+  const MappingQ1<dim> & get_mapping() const { return mapping; }
   const std::set<unsigned int> & get_material_ids() const { return material_ids; }
   const std::vector<unsigned int> & get_ref_renumbering() const { return renumberings[0]; }
   const unsigned int & get_ref_renumbering(unsigned int i) const { return renumberings[0][i]; }
@@ -36,14 +37,14 @@ public:
 private:
   void generate_mesh();
 
-  Triangulation<2> triangulation;
-  const MappingQ1<2> mapping;
-  FE_DGQ<2> fe;
-  DoFHandler<2> dof_handler;
+  Triangulation<dim> triangulation;
+  const MappingQ1<dim> mapping;
+  FE_DGQ<dim> fe;
+  DoFHandler<dim> dof_handler;
   SparsityPattern sparsity_pattern;
 
   /// The angular quadrature object
-  AngularQuadrature aq;
+  AngularQuadrature<dim> aq;
 
   /// Renumberings between half ranges (if enabled)
   std::vector<std::vector<unsigned int>> renumberings;

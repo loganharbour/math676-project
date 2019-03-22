@@ -8,20 +8,21 @@
 namespace RadProblem
 {
 
+using namespace dealii;
+
 // Forward declarations
-class AngularQuadrature;
+template <int dim>
 class Description;
+template <int dim>
 class Discretization;
+template <int dim>
 class Problem;
 
-using namespace dealii;
-using DoFInfo = MeshWorker::DoFInfo<2>;
-using CellInfo = MeshWorker::IntegrationInfo<2>;
-
+template <int dim>
 class DSAProblem : public ParameterAcceptor
 {
 public:
-  DSAProblem(Problem & problem);
+  DSAProblem(Problem<dim> & problem);
 
   /// Initial setup for the DSAProblem
   void setup();
@@ -35,28 +36,32 @@ private:
   /// Assemble the initial LHS and RHS (dsa_matrix, dsa_rhs), which remain constant
   void assemble_initial();
   /// Initial cell integration term for MeshWorker
-  void integrate_cell_initial(DoFInfo & dinfo, CellInfo & info) const;
+  void integrate_cell_initial(MeshWorker::DoFInfo<dim> & dinfo,
+                              MeshWorker::IntegrationInfo<dim> & info) const;
   /// Initial boundary integration term for MeshWorker
-  void integrate_boundary_initial(DoFInfo & dinfo, CellInfo & info) const;
+  void integrate_boundary_initial(MeshWorker::DoFInfo<dim> & dinfo,
+                                  MeshWorker::IntegrationInfo<dim> & info) const;
   /// Initial face integration term for MeshWorker
-  void integrate_face_initial(DoFInfo & dinfo1,
-                              DoFInfo & dinfo2,
-                              CellInfo & info1,
-                              CellInfo & info2) const;
+  void integrate_face_initial(MeshWorker::DoFInfo<dim> & dinfo1,
+                              MeshWorker::DoFInfo<dim> & dinfo2,
+                              MeshWorker::IntegrationInfo<dim> & info1,
+                              MeshWorker::IntegrationInfo<dim> & info2) const;
 
   /// Assemble the components of the LHS and RHS that change with each iteration
   void assemble();
   /// Cell integration term for MeshWorker
-  void integrate_cell(DoFInfo & dinfo, CellInfo & info) const;
+  void integrate_cell(MeshWorker::DoFInfo<dim> & dinfo,
+                      MeshWorker::IntegrationInfo<dim> & info) const;
   /// Boundary integration term for MeshWorker
-  void integrate_boundary(DoFInfo & dinfo, CellInfo & info) const;
+  void integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
+                          MeshWorker::IntegrationInfo<dim> & info) const;
 
   /// Access to the description in the Problem
-  const Description & description;
+  const Description<dim> & description;
   /// Access to the discretization in the Problem
-  const Discretization & discretization;
+  const Discretization<dim> & discretization;
   /// Access to the dof_handler in the Description
-  const DoFHandler<2> & dof_handler;
+  const DoFHandler<dim> & dof_handler;
   /// Access the scalar flux DGFEM solution in the Problem
   Vector<double> & scalar_flux;
   /// Access the old scalar flux DGFEM solution in the Problem
@@ -73,7 +78,7 @@ private:
   /// Storage for the error corrector solution
   Vector<double> solution;
   /// InfoBox for MeshWorker
-  MeshWorker::IntegrationInfoBox<2> info_box;
+  MeshWorker::IntegrationInfoBox<dim> info_box;
   /// Assembler used by the MeshWorker::loop
   MeshWorker::Assembler::SystemSimple<SparseMatrix<double>, Vector<double>> assembler;
 

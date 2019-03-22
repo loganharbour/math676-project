@@ -14,7 +14,8 @@ namespace RadProblem
 {
 using namespace dealii;
 
-DSAProblem::DSAProblem(Problem & problem)
+template <int dim>
+DSAProblem<dim>::DSAProblem(Problem<dim> & problem)
   : ParameterAcceptor("DSAProblem"),
     description(problem.get_description()),
     discretization(problem.get_discretization()),
@@ -26,8 +27,9 @@ DSAProblem::DSAProblem(Problem & problem)
   add_parameter("enabled", enabled);
 }
 
+template <int dim>
 void
-DSAProblem::setup()
+DSAProblem<dim>::setup()
 {
   // Do not setup without scattering or if it is disabled
   if (!description.has_scattering() || !enabled)
@@ -52,8 +54,9 @@ DSAProblem::setup()
   assembler.initialize(system_matrix, system_rhs);
 }
 
+template <int dim>
 void
-DSAProblem::solve()
+DSAProblem<dim>::solve()
 {
   // Skip if disabled
   if (!enabled)
@@ -74,27 +77,32 @@ DSAProblem::solve()
   scalar_flux += solution;
 }
 
+template <int dim>
 void
-DSAProblem::assemble_initial()
+DSAProblem<dim>::assemble_initial()
 {
   MeshWorker::Assembler::SystemSimple<SparseMatrix<double>, Vector<double>> initial_assembler;
   initial_assembler.initialize(dsa_matrix, dsa_rhs);
 
   // Lambda functions for passing into MeshWorker::loop
-  const auto cell_worker = [&](DoFInfo & dinfo, CellInfo & info) {
+  const auto cell_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
+                               MeshWorker::IntegrationInfo<dim> & info) {
     DSAProblem::integrate_cell_initial(dinfo, info);
   };
-  const auto boundary_worker = [&](DoFInfo & dinfo, CellInfo & info) {
+  const auto boundary_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
+                                   MeshWorker::IntegrationInfo<dim> & info) {
     DSAProblem::integrate_boundary_initial(dinfo, info);
   };
-  const auto face_worker =
-      [&](DoFInfo & dinfo1, DoFInfo & dinfo2, CellInfo & info1, CellInfo & info2) {
-        DSAProblem::integrate_face_initial(dinfo1, dinfo2, info1, info2);
-      };
+  const auto face_worker = [&](MeshWorker::DoFInfo<dim> & dinfo1,
+                               MeshWorker::DoFInfo<dim> & dinfo2,
+                               MeshWorker::IntegrationInfo<dim> & info1,
+                               MeshWorker::IntegrationInfo<dim> & info2) {
+    DSAProblem::integrate_face_initial(dinfo1, dinfo2, info1, info2);
+  };
 
   // Call loop to execute the integration
-  MeshWorker::DoFInfo<2> dof_info(dof_handler);
-  MeshWorker::loop<2, 2, MeshWorker::DoFInfo<2>, MeshWorker::IntegrationInfoBox<2>>(
+  MeshWorker::DoFInfo<dim> dof_info(dof_handler);
+  MeshWorker::loop<dim, dim, MeshWorker::DoFInfo<dim>, MeshWorker::IntegrationInfoBox<dim>>(
       dof_handler.begin_active(),
       dof_handler.end(),
       dof_info,
@@ -105,24 +113,27 @@ DSAProblem::assemble_initial()
       initial_assembler);
 }
 
+template <int dim>
 void
-DSAProblem::assemble()
+DSAProblem<dim>::assemble()
 {
   // Copy over constant values for each solve
   system_matrix.copy_from(dsa_matrix);
   system_rhs = dsa_rhs;
 
   // Lambda functions for passing into MeshWorker::loop
-  const auto cell_worker = [&](DoFInfo & dinfo, CellInfo & info) {
+  const auto cell_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
+                               MeshWorker::IntegrationInfo<dim> & info) {
     DSAProblem::integrate_cell(dinfo, info);
   };
-  const auto boundary_worker = [&](DoFInfo & dinfo, CellInfo & info) {
+  const auto boundary_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
+                                   MeshWorker::IntegrationInfo<dim> & info) {
     DSAProblem::integrate_boundary(dinfo, info);
   };
 
   // Call loop to execute the integration
-  MeshWorker::DoFInfo<2> dof_info(dof_handler);
-  MeshWorker::loop<2, 2, MeshWorker::DoFInfo<2>, MeshWorker::IntegrationInfoBox<2>>(
+  MeshWorker::DoFInfo<dim> dof_info(dof_handler);
+  MeshWorker::loop<dim, dim, MeshWorker::DoFInfo<dim>, MeshWorker::IntegrationInfoBox<dim>>(
       dof_handler.begin_active(),
       dof_handler.end(),
       dof_info,
@@ -133,10 +144,12 @@ DSAProblem::assemble()
       assembler);
 }
 
+template <int dim>
 void
-DSAProblem::integrate_cell(DoFInfo & dinfo, CellInfo & info) const
+DSAProblem<dim>::integrate_cell(MeshWorker::DoFInfo<dim> & dinfo,
+                                MeshWorker::IntegrationInfo<dim> & info) const
 {
-  const FEValuesBase<2> & fe = info.fe_values();
+  const FEValuesBase<dim> & fe = info.fe_values();
   Vector<double> & local_vector = dinfo.vector(0).block(0);
   const double sigma_s = description.get_material(dinfo.cell->material_id()).sigma_s;
 
@@ -152,16 +165,20 @@ DSAProblem::integrate_cell(DoFInfo & dinfo, CellInfo & info) const
   LocalIntegrators::L2::L2(local_vector, fe, scalar_flux_change, sigma_s);
 }
 
+template <int dim>
 void
-DSAProblem::integrate_boundary(DoFInfo & /*dinfo*/, CellInfo & /*info*/) const
+DSAProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & /*dinfo*/,
+                                    MeshWorker::IntegrationInfo<dim> & /*info*/) const
 {
   // Reflective BC correction will go here at some point
 }
 
+template <int dim>
 void
-DSAProblem::integrate_cell_initial(DoFInfo & dinfo, CellInfo & info) const
+DSAProblem<dim>::integrate_cell_initial(MeshWorker::DoFInfo<dim> & dinfo,
+                                        MeshWorker::IntegrationInfo<dim> & info) const
 {
-  const FEValuesBase<2> & fe = info.fe_values();
+  const FEValuesBase<dim> & fe = info.fe_values();
   FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
   const auto & material = description.get_material(dinfo.cell->material_id());
 
@@ -169,11 +186,12 @@ DSAProblem::integrate_cell_initial(DoFInfo & dinfo, CellInfo & info) const
   LocalIntegrators::Laplace::cell_matrix(local_matrix, fe, material.D);
 }
 
+template <int dim>
 void
-DSAProblem::integrate_face_initial(DoFInfo & dinfo1,
-                                   DoFInfo & dinfo2,
-                                   CellInfo & info1,
-                                   CellInfo & info2) const
+DSAProblem<dim>::integrate_face_initial(MeshWorker::DoFInfo<dim> & dinfo1,
+                                        MeshWorker::DoFInfo<dim> & dinfo2,
+                                        MeshWorker::IntegrationInfo<dim> & info1,
+                                        MeshWorker::IntegrationInfo<dim> & info2) const
 {
   const auto & fe1 = info1.fe_values();
   const auto & fe2 = info2.fe_values();
@@ -203,7 +221,7 @@ DSAProblem::integrate_face_initial(DoFInfo & dinfo1,
   for (unsigned int q = 0; q < fe1.n_quadrature_points; ++q)
   {
     const double JxW = fe1.JxW(q);
-    const Tensor<1, 2> n = fe1.normal_vector(q);
+    const Tensor<1, dim> n = fe1.normal_vector(q);
     for (unsigned int i = 0; i < n_dofs; ++i)
     {
       const double Ddnv1 = D1 * n * fe1.shape_grad(i, q);
@@ -225,8 +243,10 @@ DSAProblem::integrate_face_initial(DoFInfo & dinfo1,
   }
 }
 
+template <int dim>
 void
-DSAProblem::integrate_boundary_initial(DoFInfo & dinfo, CellInfo & info) const
+DSAProblem<dim>::integrate_boundary_initial(MeshWorker::DoFInfo<dim> & dinfo,
+                                            MeshWorker::IntegrationInfo<dim> & info) const
 {
   const auto & fe = info.fe_values();
 
@@ -237,7 +257,7 @@ DSAProblem::integrate_boundary_initial(DoFInfo & dinfo, CellInfo & info) const
   const double D = description.get_material(dinfo.cell->material_id()).D;
 
   // RHS contribution (for dirichlet BCs)
-  if (bc_type != Description::BCTypes::Reflective)
+  if (bc_type != BCTypes::Reflective)
   {
     // Length of the cell in the orthogonal direction to this face
     const unsigned int n = GeometryInfo<2>::unit_normal_direction[dinfo.face_number];
@@ -253,7 +273,7 @@ DSAProblem::integrate_boundary_initial(DoFInfo & dinfo, CellInfo & info) const
     for (unsigned int q = 0; q < fe.n_quadrature_points; ++q)
     {
       const double JxW = fe.JxW(q);
-      const Tensor<1, 2> n = fe.normal_vector(q);
+      const Tensor<1, dim> n = fe.normal_vector(q);
       for (unsigned int i = 0; i < n_dofs; ++i)
       {
         const double v = fe.shape_value(i, q);
@@ -268,5 +288,17 @@ DSAProblem::integrate_boundary_initial(DoFInfo & dinfo, CellInfo & info) const
     }
   }
 }
+
+template DSAProblem<1>::DSAProblem(Problem<1> & problem);
+template DSAProblem<2>::DSAProblem(Problem<2> & problem);
+template DSAProblem<3>::DSAProblem(Problem<3> & problem);
+
+template void DSAProblem<1>::setup();
+template void DSAProblem<2>::setup();
+template void DSAProblem<3>::setup();
+
+template void DSAProblem<1>::solve();
+template void DSAProblem<2>::solve();
+template void DSAProblem<3>::solve();
 
 } // namespace RadProblem

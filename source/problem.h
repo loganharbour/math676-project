@@ -15,10 +15,7 @@ namespace RadProblem
 {
 using namespace dealii;
 
-// Forward declarations
-class AngularQuadrature;
-class Material;
-
+template <int dim>
 class Problem : public ParameterAcceptor
 {
 public:
@@ -26,9 +23,9 @@ public:
 
   void run();
 
-  const Description & get_description() const { return description; }
-  Discretization & get_discretization() { return discretization; }
-  const Discretization & get_discretization() const { return discretization; }
+  const Description<dim> & get_description() const { return description; }
+  Discretization<dim> & get_discretization() { return discretization; }
+  const Discretization<dim> & get_discretization() const { return discretization; }
 
   Vector<double> & get_scalar_flux() { return scalar_flux; }
   Vector<double> & get_scalar_flux_old() { return scalar_flux_old; }
@@ -56,16 +53,16 @@ private:
   void output_vtu() const;
 
   /// Problem description that holds material properties, boundary conditions, etc
-  Description description;
+  Description<dim> description;
   /// Problem discretization that holds the dof_handler and triangulation
-  Discretization discretization;
+  Discretization<dim> discretization;
   /// The SNProblem, which computes the SN quantities
-  SNProblem sn;
+  SNProblem<dim> sn;
   /// The DSAProblem, which accelerates the source iteration
-  DSAProblem dsa;
+  DSAProblem<dim> dsa;
 
   /// Access to the dof_handler in the Discretization
-  const DoFHandler<2> & dof_handler;
+  const DoFHandler<dim> & dof_handler;
 
   /// Finite element representation of the scalar flux at the current iteration
   Vector<double> scalar_flux;

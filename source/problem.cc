@@ -6,7 +6,8 @@ namespace RadProblem
 {
 using namespace dealii;
 
-Problem::Problem()
+template <int dim>
+Problem<dim>::Problem()
   : ParameterAcceptor("Problem"),
     sn(*this),
     dsa(*this),
@@ -23,8 +24,9 @@ Problem::Problem()
   add_parameter("source_iteration_tolerance", source_iteration_tol);
 }
 
+template <int dim>
 void
-Problem::run()
+Problem<dim>::run()
 {
   setup();
   solve();
@@ -37,8 +39,9 @@ Problem::run()
     saveVector(residuals, residual_filename);
 }
 
+template <int dim>
 void
-Problem::setup()
+Problem<dim>::setup()
 {
   // Setup mesh
   discretization.setup();
@@ -55,8 +58,9 @@ Problem::setup()
   dsa.setup();
 }
 
+template <int dim>
 void
-Problem::solve()
+Problem<dim>::solve()
 {
   for (unsigned int l = 0; l < max_its; ++l)
   {
@@ -87,14 +91,15 @@ Problem::solve()
   std::cout << "Did not converge after " << max_its << " source iterations!" << std::endl;
 }
 
+template <int dim>
 double
-Problem::scalar_flux_L2() const
+Problem<dim>::scalar_flux_L2() const
 {
   double value = 0;
 
   const auto & fe = dof_handler.get_fe();
-  QGauss<2> quadrature(fe.degree + 1);
-  FEValues<2> fe_v(fe, quadrature, update_values | update_JxW_values);
+  QGauss<dim> quadrature(fe.degree + 1);
+  FEValues<dim> fe_v(fe, quadrature, update_values | update_JxW_values);
 
   std::vector<types::global_dof_index> indices(fe.dofs_per_cell);
   for (const auto & cell : dof_handler.active_cell_iterators())
@@ -112,15 +117,24 @@ Problem::scalar_flux_L2() const
   return value;
 }
 
+template <int dim>
 void
-Problem::output_vtu() const
+Problem<dim>::output_vtu() const
 {
   std::ofstream output(vtu_filename + ".vtu");
-  DataOut<2> data_out;
+  DataOut<dim> data_out;
   data_out.attach_dof_handler(dof_handler);
   data_out.add_data_vector(scalar_flux, "scalar_flux");
   data_out.build_patches();
   data_out.write_vtu(output);
 }
+
+template Problem<1>::Problem();
+template Problem<2>::Problem();
+template Problem<3>::Problem();
+
+template void Problem<1>::run();
+template void Problem<2>::run();
+template void Problem<3>::run();
 
 } // namespace RadProblem
