@@ -77,6 +77,8 @@ private:
 
   /// Vtu output filename
   std::string vtu_filename = "output";
+  /// Residual output filename
+  std::string residual_filename = "";
   /// Maximum source iterations
   unsigned int max_its = 1000;
   /// Source iteration tolerance

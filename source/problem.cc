@@ -14,6 +14,8 @@ Problem::Problem()
 {
   // .vtu output filename (default: output); no output if empty
   add_parameter("vtu_filename", vtu_filename);
+  // Residual vector output filename (default: empty); no output if empty
+  add_parameter("residual_filename", residual_filename);
 
   // Maximum source iterations (default: 1000)
   add_parameter("max_source_iterations", max_its);
@@ -30,8 +32,12 @@ Problem::run()
   // Ouput scalar_flux in .vtu format if filename is given
   if (vtu_filename.length() != 0)
     output_vtu();
+  // Output residuals in a text file if filename is given
+  if (residual_filename.length() != 0)
+    saveVector(residuals, residual_filename);
 }
 
+void
 Problem::setup()
 {
   // Setup mesh

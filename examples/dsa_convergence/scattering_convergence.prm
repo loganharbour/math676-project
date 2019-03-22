@@ -1,0 +1,24 @@
+subsection Description
+  set material_ids     = 0
+  set material_sigma_s = 1
+  set material_sigma_t = 100
+  set material_src     = 1
+end
+
+
+subsection Discretization
+  set uniform_refinement = 5
+  set renumber = false
+end
+
+
+subsection Problem
+  set vtu_filename =
+  set residual_filename = 1
+  set max_source_iterations = 10000
+end
+
+
+subsection DSAProblem
+  set enabled = true
+end  
