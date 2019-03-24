@@ -51,6 +51,7 @@ Description<dim>::setup_materials(const std::set<unsigned int> & mesh_material_i
       throw ExcMessage("Material missing for id " + std::to_string(*it));
 
   // Make sure user isn't providing extra materials that don't exist in the mesh
+  // or one material more than once
   if (material_ids.size() != mesh_material_ids.size())
     throw ExcMessage("Extraneous materials provided");
 
@@ -59,10 +60,6 @@ Description<dim>::setup_materials(const std::set<unsigned int> & mesh_material_i
     // Marker for if the problem has scattering
     if (material_sigma_s[i] > 0)
       scattering = true;
-    // Check for duplicate ids
-    if (materials.find(material_ids[i]) != materials.end())
-      throw ExcMessage("Material id " + std::to_string(material_ids[i]) +
-                       " provided more than once");
     // Insert into material map
     materials.emplace(material_ids[i],
                       Material(material_sigma_t[i], material_sigma_s[i], material_src[i]));
@@ -102,10 +99,11 @@ Description<dim>::fill_bcs(const BCTypes type,
   if (values && ids.size() != values->size())
     throw ExcMessage("Boundary inputs are not of the same size");
 
-  // Fill with values if given
+  // Fill BCs that contain a value
   if (values)
     for (unsigned int i = 0; i < ids.size(); ++i)
       bcs.emplace(ids[i], BC(type, (*values)[i]));
+  // Fill BCs that do not contain a value
   else
     for (unsigned int i = 0; i < ids.size(); ++i)
       bcs.emplace(ids[i], BC(type));
