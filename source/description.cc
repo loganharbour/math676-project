@@ -1,9 +1,8 @@
 #include "description.h"
+
 #include "discretization.h"
 
 #include <deal.II/base/exceptions.h>
-
-#include <algorithm>
 
 namespace RadProblem
 {

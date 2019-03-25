@@ -1,14 +1,15 @@
 #ifndef DESCRIPTION_H
 #define DESCRIPTION_H
 
-#include "discretization.h"
-
 #include <deal.II/base/parameter_acceptor.h>
 
 #include <map>
 
 namespace RadProblem
 {
+
+template <int dim>
+class Discretization;
 
 // The possible boundary condition types
 enum BCTypes
