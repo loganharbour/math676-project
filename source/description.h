@@ -88,8 +88,6 @@ private:
 
   // Boundary condition storage
   std::map<const unsigned int, const BC> bcs;
-  // The unique boundarty ids input by the user
-  std::set<unsigned int> input_bc_ids;
   // Whether or not we have incident boundary conditions
   bool incident_bcs = false;
 

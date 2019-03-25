@@ -85,27 +85,22 @@ Description<dim>::fill_bcs(const BCTypes type,
                            const std::vector<unsigned int> & ids,
                            const std::vector<double> * values)
 {
-  // Check for uniqueness
-  for (unsigned int id : ids)
-  {
-    if (input_bc_ids.find(id) != input_bc_ids.end())
-      throw ExcMessage("Boundary IDs are not unique");
-    else
-      input_bc_ids.insert(id);
-  }
-
   // Check for matching size (if values are given)
   if (values && ids.size() != values->size())
-    throw ExcMessage("Boundary inputs are not of the same size");
+    throw ExcMessage("Boundary input values are not of the same size");
 
-  // Fill BCs that contain a value
-  if (values)
-    for (unsigned int i = 0; i < ids.size(); ++i)
+  for (unsigned int i = 0; i < ids.size(); ++i)
+  {
+    // Check for uniqueness
+    if (bcs.find(ids[i]) != bcs.end())
+      throw ExcMessage("Boundary id " + std::to_string(ids[i]) + " given more than once");
+    // Fill a BC that includes a value
+    if (values)
       bcs.emplace(ids[i], BC(type, (*values)[i]));
-  // Fill BCs that do not contain a value
-  else
-    for (unsigned int i = 0; i < ids.size(); ++i)
+    // Fill a BC that does not include a value
+    else
       bcs.emplace(ids[i], BC(type));
+  }
 
   // Set identifier for incident BCs if necessary
   if (ids.size() != 0 && type != BCTypes::Vacuum)
