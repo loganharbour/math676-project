@@ -260,7 +260,7 @@ DSAProblem<dim>::integrate_boundary_initial(MeshWorker::DoFInfo<dim> & dinfo,
   if (bc_type != BCTypes::Reflective)
   {
     // Length of the cell in the orthogonal direction to this face
-    const unsigned int n = GeometryInfo<2>::unit_normal_direction[dinfo.face_number];
+    const unsigned int n = GeometryInfo<dim>::unit_normal_direction[dinfo.face_number];
     const double h = dinfo.cell->extent_in_direction(n);
     // Polynomial degrees on the face
     const unsigned int deg = info.fe_values().get_fe().tensor_degree();
