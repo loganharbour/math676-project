@@ -268,24 +268,9 @@ DSAProblem<dim>::integrate_boundary_initial(MeshWorker::DoFInfo<dim> & dinfo,
     const double c = 4 * deg * (deg + 1);
     const double kappa = std::fmax(c * D / h, 0.25);
 
-    FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
-    const unsigned int n_dofs = fe.dofs_per_cell;
-    for (unsigned int q = 0; q < fe.n_quadrature_points; ++q)
-    {
-      const double JxW = fe.JxW(q);
-      const Tensor<1, dim> n = fe.normal_vector(q);
-      for (unsigned int i = 0; i < n_dofs; ++i)
-      {
-        const double v = fe.shape_value(i, q);
-        const double dnv = n * fe.shape_grad(i, q);
-        for (unsigned int j = 0; j < n_dofs; ++j)
-        {
-          const double u = fe.shape_value(j, q);
-          const double dnu = n * fe.shape_grad(j, q);
-          local_matrix(i, j) += JxW * (2 * kappa * v * u - D * (u * dnv + v * dnu));
-        }
-      }
-    }
+    // "factor" used in nitsche_matrix multiplies the entire term, therefore we
+    // must divide the penalty factor by the same factor (which is D)
+    LocalIntegrators::Laplace::nitsche_matrix(dinfo.matrix(0).matrix, fe, kappa / D, D);
   }
 }
 
