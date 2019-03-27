@@ -37,12 +37,11 @@ private:
   void solve_direction(const unsigned int d);
 
   /// Assemble LHS and RHS for angular direction d
-  void assemble_direction(const Tensor<1, dim> & dir, const bool renumber_flux);
+  void assemble_direction(const Tensor<1, dim> & dir);
   /// Cell integration term for MeshWorker
   void integrate_cell(MeshWorker::DoFInfo<dim> & dinfo,
                       MeshWorker::IntegrationInfo<dim> & info,
-                      const Tensor<1, dim> & dir,
-                      const bool renumber_flux) const;
+                      const Tensor<1, dim> & dir) const;
   /// Boundary integration term for MeshWorker
   void integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
                           MeshWorker::IntegrationInfo<dim> & info,

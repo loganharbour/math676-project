@@ -8,7 +8,6 @@ end
 
 subsection Discretization
   set uniform_refinement = 5
-  set renumber = false
 end
 
 
@@ -21,4 +20,4 @@ end
 
 subsection DSAProblem
   set enabled = true
-end  
+end

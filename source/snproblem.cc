@@ -64,16 +64,8 @@ template <int dim>
 void
 SNProblem<dim>::solve_direction(const unsigned int d)
 {
-  // See if renumbering is required
-  const unsigned int half = (d < aq.n_dir() / 2 ? 0 : 1);
-  const bool renumber_flux = (discretization.do_renumber() && half == 0 ? true : false);
-
-  // Renumber dofs at the beginning of a half range if enabled
-  if (discretization.do_renumber() && (d == 0 || d == aq.n_dir() / 2))
-    discretization.renumber_dofs(half);
-
   // Assemble the system
-  assemble_direction(aq.dir(d), renumber_flux);
+  assemble_direction(aq.dir(d));
 
   SolverControl solver_control(1000, 1e-12);
   SolverRichardson<> solver(solver_control);
@@ -85,20 +77,12 @@ SNProblem<dim>::solve_direction(const unsigned int d)
             << " Richardson iterations " << std::endl;
 
   // Update scalar flux at each node (weighed by angular weight)
-  const double weight = aq.w(d);
-  if (renumber_flux)
-  {
-    const auto & to_ref = discretization.get_ref_renumbering();
-    for (unsigned int i = 0; i < dof_handler.n_dofs(); ++i)
-      scalar_flux[i] += weight * solution[to_ref[i]];
-  }
-  else
-    scalar_flux.add(weight, solution);
+  scalar_flux.add(aq.w(d), solution);
 }
 
 template <int dim>
 void
-SNProblem<dim>::assemble_direction(const Tensor<1, dim> & dir, const bool renumber_flux)
+SNProblem<dim>::assemble_direction(const Tensor<1, dim> & dir)
 {
   // Zero lhs and rhs before assembly
   system_matrix = 0;
@@ -107,7 +91,7 @@ SNProblem<dim>::assemble_direction(const Tensor<1, dim> & dir, const bool renumb
   // Lambda functions for passing into MeshWorker::loop
   const auto cell_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
                                MeshWorker::IntegrationInfo<dim> & info) {
-    SNProblem::integrate_cell(dinfo, info, dir, renumber_flux);
+    SNProblem::integrate_cell(dinfo, info, dir);
   };
   const auto boundary_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
                                    MeshWorker::IntegrationInfo<dim> & info) {
@@ -137,8 +121,7 @@ template <int dim>
 void
 SNProblem<dim>::integrate_cell(MeshWorker::DoFInfo<dim> & dinfo,
                                MeshWorker::IntegrationInfo<dim> & info,
-                               const Tensor<1, dim> & dir,
-                               const bool renumber_flux) const
+                               const Tensor<1, dim> & dir) const
 {
   const FEValuesBase<dim> & fe_v = info.fe_values();
   FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
@@ -156,15 +139,10 @@ SNProblem<dim>::integrate_cell(MeshWorker::DoFInfo<dim> & dinfo,
   if (has_scattering)
   {
     double scalar_flux_old_i;
-    unsigned int index;
     scattering_source.resize(fe_v.n_quadrature_points);
     for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
     {
-      if (renumber_flux)
-        index = discretization.get_ref_renumbering(dinfo.indices[i]);
-      else
-        index = dinfo.indices[i];
-      scalar_flux_old_i = scalar_flux_old[index];
+      scalar_flux_old_i = scalar_flux_old[dinfo.indices[i]];
       for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
         scattering_source[q] += material.sigma_s * scalar_flux_old_i * fe_v.shape_value(i, q);
     }

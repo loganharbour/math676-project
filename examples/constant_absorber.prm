@@ -14,7 +14,6 @@ end
 
 subsection Discretization
   set aq_order           = 10
-  set renumber           = true
   set uniform_refinement = 5
 end
 

@@ -29,10 +29,7 @@ public:
   const DoFHandler<dim> & get_dof_handler() const { return dof_handler; }
   const MappingQ1<dim> & get_mapping() const { return mapping; }
   const std::set<unsigned int> & get_material_ids() const { return material_ids; }
-  const std::vector<unsigned int> & get_ref_renumbering() const { return renumberings[0]; }
-  const unsigned int & get_ref_renumbering(unsigned int i) const { return renumberings[0][i]; }
   const SparsityPattern & get_sparsity_pattern() const { return sparsity_pattern; }
-  const bool & do_renumber() { return renumber; }
 
 private:
   void generate_mesh();
@@ -58,8 +55,6 @@ private:
   unsigned int aq_order = 10;
   /// Mesh uniform refinements
   unsigned int uniform_refinement = 0;
-  /// Whether or not to renumber
-  bool renumber = true;
   /// Hyper cube mesh bounds
   std::vector<double> hypercube_bounds = {0, 10};
 };

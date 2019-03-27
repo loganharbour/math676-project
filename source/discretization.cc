@@ -18,9 +18,6 @@ Discretization<dim>::Discretization()
   // Mesh uniform refinement levels (default: 0)
   add_parameter("uniform_refinement", uniform_refinement);
 
-  // Enable renumbering (default: true)
-  add_parameter("renumber", renumber);
-
   // Generate a hyper cube mesh (default: {0, 10}); empty if no hypercube generation
   add_parameter("hypercube_bounds", hypercube_bounds);
 }
@@ -38,19 +35,11 @@ Discretization<dim>::setup()
   // Initialize angular quadrature
   aq.init(aq_order);
 
-  // Default renumbering is downstream for the n_dir/2 direction
+  // Default renumbering is downstream for the first direction
   DynamicSparsityPattern dsp(dof_handler.n_dofs());
-  DoFRenumbering::downstream(dof_handler, aq.dir(aq.n_dir() / 2), false);
+  DoFRenumbering::downstream(dof_handler, aq.dir(0), false);
   DoFTools::make_flux_sparsity_pattern(dof_handler, dsp);
   sparsity_pattern.copy_from(dsp);
-
-  // Compute extra downstream numbering if requested
-  if (renumber)
-  {
-    renumberings.resize(2, std::vector<unsigned int>(dof_handler.n_dofs()));
-    DoFRenumbering::compute_downstream(
-        renumberings[0], renumberings[1], dof_handler, aq.dir(0), false);
-  }
 }
 
 template <int dim>
@@ -80,15 +69,6 @@ Discretization<dim>::generate_mesh()
   }
 }
 
-template <int dim>
-void
-Discretization<dim>::renumber_dofs(const unsigned int half)
-{
-  if (half != 0 && half != 1)
-    throw ExcMessage("half can only be 0 or 1 in renumber_dofs");
-  dof_handler.renumber_dofs(renumberings[half]);
-}
-
 template Discretization<1>::Discretization();
 template Discretization<2>::Discretization();
 template Discretization<3>::Discretization();
@@ -96,9 +76,4 @@ template Discretization<3>::Discretization();
 template void Discretization<1>::setup();
 template void Discretization<2>::setup();
 template void Discretization<3>::setup();
-
-template void Discretization<1>::renumber_dofs(const unsigned int half);
-template void Discretization<2>::renumber_dofs(const unsigned int half);
-template void Discretization<3>::renumber_dofs(const unsigned int half);
-
 } // namespace RadProblem
