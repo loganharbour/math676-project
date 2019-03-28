@@ -1,6 +1,7 @@
 #include "problem.h"
 
 #include <deal.II/base/parameter_acceptor.h>
+
 #include <iostream>
 
 using namespace RadProblem;
@@ -10,6 +11,8 @@ main(int argc, char ** argv)
 {
   try
   {
+    Utilities::MPI::MPI_InitFinalize mpi_initialization(argc, argv, 1);
+
     // Initialize problem
     Problem<2> problem;
 

@@ -11,6 +11,8 @@
 
 #include <fstream>
 
+namespace LA = dealii::LinearAlgebraTrilinos::MPI;
+
 namespace RadProblem
 {
 using namespace dealii;
@@ -23,17 +25,18 @@ public:
 
   void run();
 
+  MPI_Comm & get_comm() { return comm; }
   const Description<dim> & get_description() const { return description; }
   Discretization<dim> & get_discretization() { return discretization; }
   const Discretization<dim> & get_discretization() const { return discretization; }
 
-  Vector<double> & get_scalar_flux() { return scalar_flux; }
-  Vector<double> & get_scalar_flux_old() { return scalar_flux_old; }
-  const Vector<double> & get_scalar_flux_old() const { return scalar_flux_old; }
+  LA::Vector & get_scalar_flux() { return scalar_flux; }
+  LA::Vector & get_scalar_flux_old() { return scalar_flux_old; }
+  const LA::Vector & get_scalar_flux_old() const { return scalar_flux_old; }
 
-  SparseMatrix<double> & get_system_matrix() { return system_matrix; }
-  Vector<double> & get_system_rhs() { return system_rhs; }
-  Vector<double> & get_system_solution() { return system_solution; }
+  LA::SparseMatrix & get_system_matrix() { return system_matrix; }
+  LA::Vector & get_system_rhs() { return system_rhs; }
+  LA::Vector & get_system_solution() { return local_system_solution; }
 
   template <typename T>
   static void saveVector(const std::vector<T> & v, const std::string filename)
@@ -56,6 +59,9 @@ private:
   /// Build and save .vtu output
   void output_vtu() const;
 
+  /// MPI communicator
+  MPI_Comm comm;
+
   /// Problem description that holds material properties, boundary conditions, etc
   Description<dim> description;
   /// Problem discretization that holds the dof_handler and triangulation
@@ -69,14 +75,14 @@ private:
   const DoFHandler<dim> & dof_handler;
 
   /// Finite element representation of the scalar flux at the current iteration
-  Vector<double> scalar_flux;
+  LA::Vector scalar_flux;
   /// Finite element representation of the scalar flux at the previous iteration
-  Vector<double> scalar_flux_old;
+  LA::Vector scalar_flux_old;
 
   /// System storage
-  SparseMatrix<double> system_matrix;
-  Vector<double> system_rhs;
-  Vector<double> system_solution;
+  LA::SparseMatrix system_matrix;
+  LA::Vector system_rhs;
+  LA::Vector system_solution;
 
   /// Source iteration residuals
   std::vector<double> residuals;

@@ -1,16 +1,22 @@
 #include "discretization.h"
 
 #include <deal.II/dofs/dof_renumbering.h>
+#include <deal.II/dofs/dof_tools.h>
 #include <deal.II/grid/grid_generator.h>
-#include <deal.II/meshworker/simple.h>
+#include <deal.II/lac/sparsity_tools.h>
 
 namespace RadProblem
 {
 using namespace dealii;
 
 template <int dim>
-Discretization<dim>::Discretization()
-  : ParameterAcceptor("Discretization"), mapping(), fe(1), dof_handler(triangulation)
+Discretization<dim>::Discretization(MPI_Comm & comm)
+  : ParameterAcceptor("Discretization"),
+    comm(comm),
+    triangulation(comm),
+    mapping(),
+    fe(1),
+    dof_handler(triangulation)
 {
   // Angular quadrature order (default: 10)
   add_parameter("aq_order", aq_order);
@@ -32,14 +38,19 @@ Discretization<dim>::setup()
   // Distribute degrees of freedom
   dof_handler.distribute_dofs(fe);
 
+  // Distribute local degrees of freedom
+  locally_owned_dofs = dof_handler.locally_owned_dofs();
+  DoFTools::extract_locally_relevant_dofs(dof_handler, locally_relevant_dofs);
+
   // Initialize angular quadrature
   aq.init(aq_order);
 
   // Default renumbering is downstream for the first direction
-  DynamicSparsityPattern dsp(dof_handler.n_dofs());
+  DynamicSparsityPattern dsp(locally_relevant_dofs);
   DoFRenumbering::downstream(dof_handler, aq.dir(0), false);
   DoFTools::make_flux_sparsity_pattern(dof_handler, dsp);
-  sparsity_pattern.copy_from(dsp);
+  SparsityTools::distribute_sparsity_pattern(
+      dsp, dof_handler.n_locally_owned_dofs_per_processor(), comm, locally_relevant_dofs);
 }
 
 template <int dim>
@@ -69,9 +80,9 @@ Discretization<dim>::generate_mesh()
   }
 }
 
-template Discretization<1>::Discretization();
-template Discretization<2>::Discretization();
-template Discretization<3>::Discretization();
+template Discretization<1>::Discretization(MPI_Comm & comm);
+template Discretization<2>::Discretization(MPI_Comm & comm);
+template Discretization<3>::Discretization(MPI_Comm & comm);
 
 template void Discretization<1>::setup();
 template void Discretization<2>::setup();

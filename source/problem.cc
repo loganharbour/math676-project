@@ -9,6 +9,8 @@ using namespace dealii;
 template <int dim>
 Problem<dim>::Problem()
   : ParameterAcceptor("Problem"),
+    comm(MPI_COMM_WORLD),
+    discretization(comm),
     sn(*this),
     dsa(*this),
     dof_handler(discretization.get_dof_handler())
@@ -50,9 +52,9 @@ Problem<dim>::setup()
   description.setup(discretization);
 
   // Resize system variables
-  system_rhs.reinit(dof_handler.n_dofs());
-  system_matrix.reinit(discretization.get_sparsity_pattern());
-  system_solution.reinit(dof_handler.n_dofs());
+  // system_rhs.reinit(dof_handler.n_dofs());
+  // system_matrix.reinit(discretization.get_sparsity_pattern());
+  // system_solution.reinit(dof_handler.n_dofs());
 
   // Resize scalar flux variables
   scalar_flux.reinit(dof_handler.n_dofs());

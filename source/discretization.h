@@ -4,12 +4,11 @@
 #include "angular_quadrature.h"
 
 #include <deal.II/base/parameter_acceptor.h>
+#include <deal.II/base/index_set.h>
+#include <deal.II/distributed/tria.h>
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/fe/fe_dgq.h>
 #include <deal.II/fe/mapping_q1.h>
-#include <deal.II/grid/tria.h>
-#include <deal.II/lac/sparsity_pattern.h>
-#include <deal.II/meshworker/integration_info.h>
 
 namespace RadProblem
 {
@@ -19,7 +18,7 @@ template <int dim>
 class Discretization : public ParameterAcceptor
 {
 public:
-  Discretization();
+  Discretization(MPI_Comm & comm);
 
   void renumber_dofs(const unsigned int h);
   void setup();
@@ -29,16 +28,21 @@ public:
   const DoFHandler<dim> & get_dof_handler() const { return dof_handler; }
   const MappingQ1<dim> & get_mapping() const { return mapping; }
   const std::set<unsigned int> & get_material_ids() const { return material_ids; }
-  const SparsityPattern & get_sparsity_pattern() const { return sparsity_pattern; }
 
 private:
   void generate_mesh();
 
-  Triangulation<dim> triangulation;
+  /// MPI communicator
+  MPI_Comm & comm;
+
+  parallel::distributed::Triangulation<dim> triangulation;
   const MappingQ1<dim> mapping;
   FE_DGQ<dim> fe;
   DoFHandler<dim> dof_handler;
-  SparsityPattern sparsity_pattern;
+
+  /// Local degrees of freedom
+  IndexSet locally_owned_dofs;
+  IndexSet locally_relevant_dofs;
 
   /// The angular quadrature object
   AngularQuadrature<dim> aq;

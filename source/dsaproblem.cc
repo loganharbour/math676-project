@@ -39,8 +39,8 @@ DSAProblem<dim>::setup()
     return;
 
   // Initialize constant system storage
-  dsa_rhs.reinit(dof_handler.n_dofs());
-  dsa_matrix.reinit(discretization.get_sparsity_pattern());
+  // dsa_rhs.reinit(dof_handler.n_dofs());
+  // dsa_matrix.reinit(discretization.get_sparsity_pattern());
 
   // Setup InfoBox for MeshWorker
   UpdateFlags update_flags = update_quadrature_points | update_values | update_gradients;

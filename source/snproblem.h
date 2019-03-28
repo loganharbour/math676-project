@@ -5,6 +5,8 @@
 #include <deal.II/meshworker/loop.h>
 #include <deal.II/meshworker/simple.h>
 
+namespace LA = dealii::LinearAlgebraTrilinos::MPI;
+
 namespace RadProblem
 {
 
@@ -64,14 +66,14 @@ private:
   const AngularQuadrature<dim> & aq;
 
   /// Access the scalar flux DGFEM solution in the Problem
-  Vector<double> & scalar_flux;
+  LA::Vector & scalar_flux;
   /// Access the old scalar flux DGFEM solution in the Problem
-  Vector<double> & scalar_flux_old;
+  LA::Vector & scalar_flux_old;
 
   /// System storage owned by the Problem
-  SparseMatrix<double> & system_matrix;
-  Vector<double> & system_rhs;
-  Vector<double> & system_solution;
+  LA::SparseMatrix & system_matrix;
+  LA::Vector & system_rhs;
+  LA::Vector & system_solution;
 
 
   /// InfoBox for MeshWorker

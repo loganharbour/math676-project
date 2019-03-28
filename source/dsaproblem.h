@@ -5,6 +5,8 @@
 #include <deal.II/meshworker/loop.h>
 #include <deal.II/meshworker/simple.h>
 
+namespace LA = dealii::LinearAlgebraTrilinos::MPI;
+
 namespace RadProblem
 {
 
@@ -65,23 +67,23 @@ private:
   const DoFHandler<dim> & dof_handler;
 
   /// Access the scalar flux DGFEM solution in the Problem
-  Vector<double> & scalar_flux;
+  LA::Vector & scalar_flux;
   /// Access the old scalar flux DGFEM solution in the Problem
-  const Vector<double> & scalar_flux_old;
+  const LA::Vector & scalar_flux_old;
 
   /// System storage owned by the Problem
-  SparseMatrix<double> & system_matrix;
-  Vector<double> & system_rhs;
-  Vector<double> & system_solution;
+  LA::SparseMatrix & system_matrix;
+  LA::Vector & system_rhs;
+  LA::Vector & system_solution;
 
   /// System storage for the constant LHS and RHS
-  SparseMatrix<double> dsa_matrix;
-  Vector<double> dsa_rhs;
+  LA::SparseMatrix dsa_matrix;
+  LA::Vector dsa_rhs;
 
   /// InfoBox for MeshWorker
   MeshWorker::IntegrationInfoBox<dim> info_box;
   /// Assembler used by the MeshWorker::loop
-  MeshWorker::Assembler::SystemSimple<SparseMatrix<double>, Vector<double>> assembler;
+  MeshWorker::Assembler::SystemSimple<LA::MPI::SparseMatrix, LA::MPI::Vector> assembler;
 
   /// Whether or not DSA is enabled
   bool enabled = true;
