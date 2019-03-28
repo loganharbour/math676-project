@@ -21,7 +21,10 @@ DSAProblem<dim>::DSAProblem(Problem<dim> & problem)
     discretization(problem.get_discretization()),
     dof_handler(discretization.get_dof_handler()),
     scalar_flux(problem.get_scalar_flux()),
-    scalar_flux_old(problem.get_scalar_flux_old())
+    scalar_flux_old(problem.get_scalar_flux_old()),
+    system_matrix(problem.get_system_matrix()),
+    system_rhs(problem.get_system_rhs()),
+    system_solution(problem.get_system_solution())
 {
   // Whether or not DSA is enabled (default: true)
   add_parameter("enabled", enabled);
@@ -35,12 +38,9 @@ DSAProblem<dim>::setup()
   if (!description.has_scattering() || !enabled)
     return;
 
-  // Initialize system storage
+  // Initialize constant system storage
   dsa_rhs.reinit(dof_handler.n_dofs());
-  system_rhs.reinit(dof_handler.n_dofs());
-  system_matrix.reinit(discretization.get_sparsity_pattern());
   dsa_matrix.reinit(discretization.get_sparsity_pattern());
-  solution.reinit(dof_handler.n_dofs());
 
   // Setup InfoBox for MeshWorker
   UpdateFlags update_flags = update_quadrature_points | update_values | update_gradients;
@@ -66,15 +66,16 @@ DSAProblem<dim>::solve()
   assemble();
 
   // Solve system
+  system_solution = 0;
   SolverControl control(1000, 1.e-12);
   SolverCG<Vector<double>> solver(control);
   PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
   preconditioner.initialize(system_matrix, dof_handler.get_fe().dofs_per_cell);
-  solver.solve(system_matrix, solution, system_rhs, preconditioner);
+  solver.solve(system_matrix, system_solution, system_rhs, preconditioner);
   std::cout << "  DSA converged after " << control.last_step() << " CG iterations" << std::endl;
 
   // Update scalar flux with change
-  scalar_flux += solution;
+  scalar_flux += system_solution;
 }
 
 template <int dim>

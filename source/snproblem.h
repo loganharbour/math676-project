@@ -57,21 +57,23 @@ private:
   const Description<dim> & description;
   /// Access to the discretization in the Problem
   Discretization<dim> & discretization;
+
   /// Access to the dof_handler in the Description
   const DoFHandler<dim> & dof_handler;
   /// Access to the angular quadrature
   const AngularQuadrature<dim> & aq;
+
   /// Access the scalar flux DGFEM solution in the Problem
   Vector<double> & scalar_flux;
   /// Access the old scalar flux DGFEM solution in the Problem
   Vector<double> & scalar_flux_old;
 
-  /// System matrix used in solving a single direction
-  SparseMatrix<double> system_matrix;
-  /// System right hand side used in solving a single direction
-  Vector<double> system_rhs;
-  /// Storage for the angular flux solution for a single direction
-  Vector<double> solution;
+  /// System storage owned by the Problem
+  SparseMatrix<double> & system_matrix;
+  Vector<double> & system_rhs;
+  Vector<double> & system_solution;
+
+
   /// InfoBox for MeshWorker
   MeshWorker::IntegrationInfoBox<dim> info_box;
   /// Assembler used by the MeshWorker::loop

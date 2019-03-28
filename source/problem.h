@@ -31,6 +31,10 @@ public:
   Vector<double> & get_scalar_flux_old() { return scalar_flux_old; }
   const Vector<double> & get_scalar_flux_old() const { return scalar_flux_old; }
 
+  SparseMatrix<double> & get_system_matrix() { return system_matrix; }
+  Vector<double> & get_system_rhs() { return system_rhs; }
+  Vector<double> & get_system_solution() { return system_solution; }
+
   template <typename T>
   static void saveVector(const std::vector<T> & v, const std::string filename)
   {
@@ -68,6 +72,11 @@ private:
   Vector<double> scalar_flux;
   /// Finite element representation of the scalar flux at the previous iteration
   Vector<double> scalar_flux_old;
+
+  /// System storage
+  SparseMatrix<double> system_matrix;
+  Vector<double> system_rhs;
+  Vector<double> system_solution;
 
   /// Source iteration residuals
   std::vector<double> residuals;

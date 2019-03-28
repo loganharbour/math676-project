@@ -60,23 +60,24 @@ private:
   const Description<dim> & description;
   /// Access to the discretization in the Problem
   const Discretization<dim> & discretization;
+
   /// Access to the dof_handler in the Description
   const DoFHandler<dim> & dof_handler;
+
   /// Access the scalar flux DGFEM solution in the Problem
   Vector<double> & scalar_flux;
   /// Access the old scalar flux DGFEM solution in the Problem
   const Vector<double> & scalar_flux_old;
 
-  /// Matrix that holds the constant DSA LHS (filled once on setup)
+  /// System storage owned by the Problem
+  SparseMatrix<double> & system_matrix;
+  Vector<double> & system_rhs;
+  Vector<double> & system_solution;
+
+  /// System storage for the constant LHS and RHS
   SparseMatrix<double> dsa_matrix;
-  /// Matrix used for solving the problem
-  SparseMatrix<double> system_matrix;
-  /// Vector that holds the constant DSA RHS (filled once on setup)
   Vector<double> dsa_rhs;
-  /// RHS vector used for solving the problem
-  Vector<double> system_rhs;
-  /// Storage for the error corrector solution
-  Vector<double> solution;
+
   /// InfoBox for MeshWorker
   MeshWorker::IntegrationInfoBox<dim> info_box;
   /// Assembler used by the MeshWorker::loop

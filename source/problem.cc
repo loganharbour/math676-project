@@ -49,6 +49,11 @@ Problem<dim>::setup()
   // Setup description (needs discretization for bc/material coverage)
   description.setup(discretization);
 
+  // Resize system variables
+  system_rhs.reinit(dof_handler.n_dofs());
+  system_matrix.reinit(discretization.get_sparsity_pattern());
+  system_solution.reinit(dof_handler.n_dofs());
+
   // Resize scalar flux variables
   scalar_flux.reinit(dof_handler.n_dofs());
   scalar_flux_old.reinit(dof_handler.n_dofs());

@@ -22,7 +22,10 @@ SNProblem<dim>::SNProblem(Problem<dim> & problem)
     dof_handler(discretization.get_dof_handler()),
     aq(discretization.get_aq()),
     scalar_flux(problem.get_scalar_flux()),
-    scalar_flux_old(problem.get_scalar_flux_old())
+    scalar_flux_old(problem.get_scalar_flux_old()),
+    system_matrix(problem.get_system_matrix()),
+    system_rhs(problem.get_system_rhs()),
+    system_solution(problem.get_system_solution())
 {
 }
 
@@ -30,11 +33,6 @@ template <int dim>
 void
 SNProblem<dim>::setup()
 {
-  // Initialize system storage for a single direction
-  system_rhs.reinit(dof_handler.n_dofs());
-  system_matrix.reinit(discretization.get_sparsity_pattern());
-  solution.reinit(dof_handler.n_dofs());
-
   // Setup InfoBox for MeshWorker
   const unsigned int n_points = dof_handler.get_fe().degree + 1;
   info_box.initialize_gauss_quadrature(n_points, n_points, n_points);
@@ -67,17 +65,18 @@ SNProblem<dim>::solve_direction(const unsigned int d)
   // Assemble the system
   assemble_direction(aq.dir(d));
 
+  system_solution = 0;
   SolverControl solver_control(1000, 1e-12);
   SolverRichardson<> solver(solver_control);
   PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
   preconditioner.initialize(system_matrix, dof_handler.get_fe().dofs_per_cell);
-  solver.solve(system_matrix, solution, system_rhs, preconditioner);
+  solver.solve(system_matrix, system_solution, system_rhs, preconditioner);
 
   std::cout << "  Direction " << d << " converged after " << solver_control.last_step()
             << " Richardson iterations " << std::endl;
 
   // Update scalar flux at each node (weighed by angular weight)
-  scalar_flux.add(aq.w(d), solution);
+  scalar_flux.add(aq.w(d), system_solution);
 }
 
 template <int dim>
