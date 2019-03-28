@@ -1,7 +1,7 @@
 #ifndef ANGULARQUADRATURE_H
 #define ANGULARQUADRATURE_H
 
-#include <deal.II/base/numbers.h>
+#include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/tensor.h>
 
 #include <math.h>
@@ -16,39 +16,64 @@ class AngularQuadrature
 public:
   AngularQuadrature() {}
 
-  void init(unsigned int n)
+  void init(const unsigned int order)
   {
     if (dim == 2)
     {
-      N = 2 * n;
-      directions.resize(N);
-      weights.resize(N, 1.0 / N);
-      for (unsigned int d = 0; d < N; ++d)
+      n_directions = order * 2;
+
+      directions.resize(n_directions);
+      weights.resize(n_directions, 1.0 / (double)n_directions);
+
+      for (unsigned int id = 0; id < n_directions; ++id)
       {
-        double omega = dealii::numbers::PI * (d + 0.5) / n;
-        directions[d][0] = std::cos(omega);
-        directions[d][1] = std::sin(omega);
+        const double w = (2 * (double)(id + 1) - 1) * M_PI / (double)n_directions;
+        directions[id][0] = std::cos(w);
+        directions[id][1] = std::sin(w);
       }
-      for (unsigned int d = 0; d < n / 2; ++d)
+    }
+    else if (dim == 3)
+    {
+      n_directions = order * 8;
+      const double n_per_quad = (double)order * 2;
+
+      dealii::QGauss<1> gq(order);
+      const auto & gq_JxW = gq.get_weights();
+      const auto & gq_points = gq.get_points();
+
+      for (unsigned int ig = 0; ig < order; ++ig)
       {
-        std::swap(directions[d], directions[d + 3 * n / 2]);
-        std::swap(weights[d], weights[d + 3 * n / 2]);
+        const double cos_phi = gq_points[ig](0) * 2.0 - 1.0;
+        const double sin_phi = std::sin(std::acos(cos_phi));
+
+        for (unsigned int ic = 0; ic < order * 2; ++ic)
+        {
+          const double w = (2 * (double)(ic + 1) - 1) * M_PI / n_per_quad;
+
+          dealii::Tensor<1, dim> direction;
+          direction[0] = std::cos(w) * sin_phi;
+          direction[1] = std::sin(w) * sin_phi;
+          direction[2] = cos_phi;
+          directions.emplace_back(direction);
+
+          weights.emplace_back(gq_JxW[ig] / n_per_quad);
+        }
       }
     }
   }
 
-  unsigned int n_dir() const { return N; }
+  unsigned int n_dir() const { return n_directions; }
   dealii::Tensor<1, dim> dir(const unsigned int d) const { return directions[d]; }
   double w(const unsigned int d) const { return weights[d]; }
 
 private:
   /// Number of directions
-  unsigned int N;
+  unsigned int n_directions;
 
-  /// Quadrature directions
+  /// Angular quadrature directions
   std::vector<dealii::Tensor<1, dim>> directions;
 
-  /// Quadrature weights
+  /// Angular quadrature weights
   std::vector<double> weights;
 };
 } // namespace RadProblem
