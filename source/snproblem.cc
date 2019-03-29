@@ -17,6 +17,7 @@ using namespace dealii;
 template <int dim>
 SNProblem<dim>::SNProblem(Problem<dim> & problem)
   : ParameterAcceptor("SNProblem"),
+    comm(problem.get_comm()),
     description(problem.get_description()),
     discretization(problem.get_discretization()),
     dof_handler(discretization.get_dof_handler()),
@@ -66,17 +67,20 @@ SNProblem<dim>::solve_direction(const unsigned int d)
   assemble_direction(aq.dir(d));
 
   system_solution = 0;
+
   SolverControl solver_control(1000, 1e-12);
-  SolverRichardson<> solver(solver_control);
-  PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
-  preconditioner.initialize(system_matrix, dof_handler.get_fe().dofs_per_cell);
+  LA::SolverCG solver(solver_control);
+  LA::MPI::PreconditionAMG preconditioner;
+  LA::MPI::PreconditionAMG::AdditionalData data;
+  preconditioner.initialize(system_matrix, data);
   solver.solve(system_matrix, system_solution, system_rhs, preconditioner);
 
   std::cout << "  Direction " << d << " converged after " << solver_control.last_step()
-            << " Richardson iterations " << std::endl;
+            << " iterations " << std::endl;
 
   // Update scalar flux at each node (weighed by angular weight)
-  scalar_flux.add(aq.w(d), system_solution);
+  system_solution *= aq.w(d);
+  scalar_flux += system_solution;
 }
 
 template <int dim>

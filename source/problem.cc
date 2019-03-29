@@ -51,14 +51,17 @@ Problem<dim>::setup()
   // Setup description (needs discretization for bc/material coverage)
   description.setup(discretization);
 
-  // Resize system variables
-  // system_rhs.reinit(dof_handler.n_dofs());
-  // system_matrix.reinit(discretization.get_sparsity_pattern());
-  // system_solution.reinit(dof_handler.n_dofs());
+  // Resize system variable
+  system_rhs.reinit(discretization.get_locally_owned_dofs(), comm);
+  system_matrix.reinit(discretization.get_locally_owned_dofs(),
+                       discretization.get_locally_owned_dofs(),
+                       discretization.get_sparsity_pattern(),
+                       comm);
+  system_solution.reinit(discretization.get_locally_owned_dofs(), comm);
 
   // Resize scalar flux variables
-  scalar_flux.reinit(dof_handler.n_dofs());
-  scalar_flux_old.reinit(dof_handler.n_dofs());
+  scalar_flux.reinit(discretization.get_locally_owned_dofs(), comm);
+  scalar_flux_old.reinit(discretization.get_locally_owned_dofs(), comm);
 
   // Setup the problems
   sn.setup();

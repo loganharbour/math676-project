@@ -2,10 +2,11 @@
 #define DSA_PROBLEM
 
 #include <deal.II/base/parameter_acceptor.h>
+#include <deal.II/lac/generic_linear_algebra.h>
 #include <deal.II/meshworker/loop.h>
 #include <deal.II/meshworker/simple.h>
 
-namespace LA = dealii::LinearAlgebraTrilinos::MPI;
+namespace LA = dealii::LinearAlgebraTrilinos;
 
 namespace RadProblem
 {
@@ -35,7 +36,7 @@ public:
   bool is_enabled() const { return enabled; }
 
 private:
-  /// Assemble the initial LHS and RHS (dsa_matrix, dsa_rhs), which remain constant
+  /// Assemble the initial LHS, which remain constants
   void assemble_initial();
   /// Initial cell integration term for MeshWorker
   void integrate_cell_initial(MeshWorker::DoFInfo<dim> & dinfo,
@@ -58,6 +59,9 @@ private:
   void integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
                           MeshWorker::IntegrationInfo<dim> & info) const;
 
+  /// MPI communicator
+  MPI_Comm & comm;
+
   /// Access to the description in the Problem
   const Description<dim> & description;
   /// Access to the discretization in the Problem
@@ -67,18 +71,17 @@ private:
   const DoFHandler<dim> & dof_handler;
 
   /// Access the scalar flux DGFEM solution in the Problem
-  LA::Vector & scalar_flux;
+  LA::MPI::Vector & scalar_flux;
   /// Access the old scalar flux DGFEM solution in the Problem
-  const LA::Vector & scalar_flux_old;
+  const LA::MPI::Vector & scalar_flux_old;
 
   /// System storage owned by the Problem
-  LA::SparseMatrix & system_matrix;
-  LA::Vector & system_rhs;
-  LA::Vector & system_solution;
+  LA::MPI::SparseMatrix & system_matrix;
+  LA::MPI::Vector & system_rhs;
+  LA::MPI::Vector & system_solution;
 
-  /// System storage for the constant LHS and RHS
-  LA::SparseMatrix dsa_matrix;
-  LA::Vector dsa_rhs;
+  /// System storage for the constant LHS
+  LA::MPI::SparseMatrix dsa_matrix;
 
   /// InfoBox for MeshWorker
   MeshWorker::IntegrationInfoBox<dim> info_box;

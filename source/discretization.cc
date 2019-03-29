@@ -1,6 +1,5 @@
 #include "discretization.h"
 
-#include <deal.II/dofs/dof_renumbering.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/lac/sparsity_tools.h>
@@ -45,9 +44,8 @@ Discretization<dim>::setup()
   // Initialize angular quadrature
   aq.init(aq_order);
 
-  // Default renumbering is downstream for the first direction
-  DynamicSparsityPattern dsp(locally_relevant_dofs);
-  DoFRenumbering::downstream(dof_handler, aq.dir(0), false);
+  // Setup sparsity pattern
+  dsp.reinit(locally_relevant_dofs.size(), locally_relevant_dofs.size(), locally_relevant_dofs);
   DoFTools::make_flux_sparsity_pattern(dof_handler, dsp);
   SparsityTools::distribute_sparsity_pattern(
       dsp, dof_handler.n_locally_owned_dofs_per_processor(), comm, locally_relevant_dofs);

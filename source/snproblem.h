@@ -2,10 +2,11 @@
 #define SNPROBLEM_H
 
 #include <deal.II/base/parameter_acceptor.h>
+#include <deal.II/lac/generic_linear_algebra.h>
 #include <deal.II/meshworker/loop.h>
 #include <deal.II/meshworker/simple.h>
 
-namespace LA = dealii::LinearAlgebraTrilinos::MPI;
+namespace LA = dealii::LinearAlgebraTrilinos;
 
 namespace RadProblem
 {
@@ -55,6 +56,9 @@ private:
                       MeshWorker::IntegrationInfo<dim> & info2,
                       const Tensor<1, dim> & dir) const;
 
+  /// MPI communicator
+  MPI_Comm & comm;
+
   /// Access to the description in the Problem
   const Description<dim> & description;
   /// Access to the discretization in the Problem
@@ -66,20 +70,20 @@ private:
   const AngularQuadrature<dim> & aq;
 
   /// Access the scalar flux DGFEM solution in the Problem
-  LA::Vector & scalar_flux;
+  LA::MPI::Vector & scalar_flux;
   /// Access the old scalar flux DGFEM solution in the Problem
-  LA::Vector & scalar_flux_old;
+  LA::MPI::Vector & scalar_flux_old;
 
   /// System storage owned by the Problem
-  LA::SparseMatrix & system_matrix;
-  LA::Vector & system_rhs;
-  LA::Vector & system_solution;
+  LA::MPI::SparseMatrix & system_matrix;
+  LA::MPI::Vector & system_rhs;
+  LA::MPI::Vector & system_solution;
 
 
   /// InfoBox for MeshWorker
   MeshWorker::IntegrationInfoBox<dim> info_box;
   /// Assembler used by the MeshWorker::loop
-  MeshWorker::Assembler::SystemSimple<SparseMatrix<double>, Vector<double>> assembler;
+  MeshWorker::Assembler::SystemSimple<LA::MPI::SparseMatrix, LA::MPI::Vector> assembler;
 };
 } // namespace RadProblem
 

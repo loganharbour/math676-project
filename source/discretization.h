@@ -9,6 +9,7 @@
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/fe/fe_dgq.h>
 #include <deal.II/fe/mapping_q1.h>
+#include <deal.II/lac/dynamic_sparsity_pattern.h>
 
 namespace RadProblem
 {
@@ -26,9 +27,11 @@ public:
   const AngularQuadrature<dim> & get_aq() const { return aq; }
   const std::set<unsigned int> & get_boundary_ids() const { return boundary_ids; }
   const DoFHandler<dim> & get_dof_handler() const { return dof_handler; }
+  const DynamicSparsityPattern & get_sparsity_pattern() const { return dsp; }
+
   const MappingQ1<dim> & get_mapping() const { return mapping; }
   const std::set<unsigned int> & get_material_ids() const { return material_ids; }
-
+  const IndexSet & get_locally_owned_dofs() const { return locally_owned_dofs; }
 private:
   void generate_mesh();
 
@@ -39,6 +42,7 @@ private:
   const MappingQ1<dim> mapping;
   FE_DGQ<dim> fe;
   DoFHandler<dim> dof_handler;
+  DynamicSparsityPattern dsp;
 
   /// Local degrees of freedom
   IndexSet locally_owned_dofs;
@@ -46,9 +50,6 @@ private:
 
   /// The angular quadrature object
   AngularQuadrature<dim> aq;
-
-  /// Renumberings between half ranges (if enabled)
-  std::vector<std::vector<unsigned int>> renumberings;
 
   /// Boundary ids that exist on the mesh
   std::set<unsigned int> boundary_ids;

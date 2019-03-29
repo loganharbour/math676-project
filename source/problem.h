@@ -7,11 +7,11 @@
 #include "snproblem.h"
 
 #include <deal.II/base/parameter_acceptor.h>
-#include <deal.II/lac/vector.h>
+#include <deal.II/lac/generic_linear_algebra.h>
 
 #include <fstream>
 
-namespace LA = dealii::LinearAlgebraTrilinos::MPI;
+namespace LA = dealii::LinearAlgebraTrilinos;
 
 namespace RadProblem
 {
@@ -30,13 +30,13 @@ public:
   Discretization<dim> & get_discretization() { return discretization; }
   const Discretization<dim> & get_discretization() const { return discretization; }
 
-  LA::Vector & get_scalar_flux() { return scalar_flux; }
-  LA::Vector & get_scalar_flux_old() { return scalar_flux_old; }
-  const LA::Vector & get_scalar_flux_old() const { return scalar_flux_old; }
+  LA::MPI::Vector & get_scalar_flux() { return scalar_flux; }
+  LA::MPI::Vector & get_scalar_flux_old() { return scalar_flux_old; }
+  const LA::MPI::Vector & get_scalar_flux_old() const { return scalar_flux_old; }
 
-  LA::SparseMatrix & get_system_matrix() { return system_matrix; }
-  LA::Vector & get_system_rhs() { return system_rhs; }
-  LA::Vector & get_system_solution() { return local_system_solution; }
+  LA::MPI::SparseMatrix & get_system_matrix() { return system_matrix; }
+  LA::MPI::Vector & get_system_rhs() { return system_rhs; }
+  LA::MPI::Vector & get_system_solution() { return system_solution; }
 
   template <typename T>
   static void saveVector(const std::vector<T> & v, const std::string filename)
@@ -75,14 +75,14 @@ private:
   const DoFHandler<dim> & dof_handler;
 
   /// Finite element representation of the scalar flux at the current iteration
-  LA::Vector scalar_flux;
+  LA::MPI::Vector scalar_flux;
   /// Finite element representation of the scalar flux at the previous iteration
-  LA::Vector scalar_flux_old;
+  LA::MPI::Vector scalar_flux_old;
 
   /// System storage
-  LA::SparseMatrix system_matrix;
-  LA::Vector system_rhs;
-  LA::Vector system_solution;
+  LA::MPI::SparseMatrix system_matrix;
+  LA::MPI::Vector system_rhs;
+  LA::MPI::Vector system_solution;
 
   /// Source iteration residuals
   std::vector<double> residuals;

@@ -17,6 +17,7 @@ using namespace dealii;
 template <int dim>
 DSAProblem<dim>::DSAProblem(Problem<dim> & problem)
   : ParameterAcceptor("DSAProblem"),
+    comm(problem.get_comm()),
     description(problem.get_description()),
     discretization(problem.get_discretization()),
     dof_handler(discretization.get_dof_handler()),
@@ -39,8 +40,10 @@ DSAProblem<dim>::setup()
     return;
 
   // Initialize constant system storage
-  // dsa_rhs.reinit(dof_handler.n_dofs());
-  // dsa_matrix.reinit(discretization.get_sparsity_pattern());
+  dsa_matrix.reinit(discretization.get_locally_owned_dofs(),
+                    discretization.get_locally_owned_dofs(),
+                    discretization.get_sparsity_pattern(),
+                    comm);
 
   // Setup InfoBox for MeshWorker
   UpdateFlags update_flags = update_quadrature_points | update_values | update_gradients;
@@ -67,12 +70,20 @@ DSAProblem<dim>::solve()
 
   // Solve system
   system_solution = 0;
-  SolverControl control(1000, 1.e-12);
-  SolverCG<Vector<double>> solver(control);
-  PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
-  preconditioner.initialize(system_matrix, dof_handler.get_fe().dofs_per_cell);
+  SolverControl control(1000, 1e-12);
+  LA::SolverCG solver(control);
+  LA::MPI::PreconditionAMG preconditioner;
+  LA::MPI::PreconditionAMG::AdditionalData data;
+  preconditioner.initialize(system_matrix, data);
   solver.solve(system_matrix, system_solution, system_rhs, preconditioner);
   std::cout << "  DSA converged after " << control.last_step() << " CG iterations" << std::endl;
+
+  // SolverControl control(1000, 1.e-12);
+  // SolverCG<Vector<double>> solver(control);
+  // PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
+  // preconditioner.initialize(system_matrix, dof_handler.get_fe().dofs_per_cell);
+  // solver.solve(system_matrix, system_solution, system_rhs, preconditioner);
+  // std::cout << "  DSA converged after " << control.last_step() << " CG iterations" << std::endl;
 
   // Update scalar flux with change
   scalar_flux += system_solution;
@@ -82,8 +93,8 @@ template <int dim>
 void
 DSAProblem<dim>::assemble_initial()
 {
-  MeshWorker::Assembler::SystemSimple<SparseMatrix<double>, Vector<double>> initial_assembler;
-  initial_assembler.initialize(dsa_matrix, dsa_rhs);
+  MeshWorker::Assembler::SystemSimple<LA::MPI::SparseMatrix, LA::MPI::Vector> initial_assembler;
+  initial_assembler.initialize(dsa_matrix, system_rhs);
 
   // Lambda functions for passing into MeshWorker::loop
   const auto cell_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
@@ -118,9 +129,9 @@ template <int dim>
 void
 DSAProblem<dim>::assemble()
 {
-  // Copy over constant values for each solve
+  // Copy over LHS and reset RHS
   system_matrix.copy_from(dsa_matrix);
-  system_rhs = dsa_rhs;
+  system_rhs = 0;
 
   // Lambda functions for passing into MeshWorker::loop
   const auto cell_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
