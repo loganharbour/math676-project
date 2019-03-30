@@ -10,6 +10,7 @@ template <int dim>
 Problem<dim>::Problem()
   : ParameterAcceptor("Problem"),
     comm(MPI_COMM_WORLD),
+    pcout(std::cout, (Utilities::MPI::this_mpi_process(comm) == 0)),
     discretization(comm),
     sn(*this),
     dsa(*this),
@@ -74,7 +75,7 @@ Problem<dim>::solve()
 {
   for (unsigned int l = 0; l < max_its; ++l)
   {
-    std::cout << "Source iteration " << l << std::endl;
+    pcout << "Source iteration " << l << std::endl;
 
     // Solve all directions with SN
     sn.solve_directions();
@@ -89,16 +90,16 @@ Problem<dim>::solve()
     // Compute L2 norm of (scalar_flux - scalar_flux_old) and store
     const double norm = scalar_flux_L2();
     residuals.emplace_back(norm);
-    std::cout << "  Scalar flux L2 difference: " << std::scientific << std::setprecision(2) << norm
-              << std::endl
-              << std::endl;
+    pcout << "  Scalar flux L2 difference: " << std::scientific << std::setprecision(2) << norm
+          << std::endl
+          << std::endl;
 
     // Exit if converged
     if (norm < source_iteration_tol)
       return;
   }
 
-  std::cout << "Did not converge after " << max_its << " source iterations!" << std::endl;
+  pcout << "Did not converge after " << max_its << " source iterations!" << std::endl;
 }
 
 template <int dim>
@@ -114,6 +115,9 @@ Problem<dim>::scalar_flux_L2() const
   std::vector<types::global_dof_index> indices(fe.dofs_per_cell);
   for (const auto & cell : dof_handler.active_cell_iterators())
   {
+    if (!cell->is_locally_owned())
+      continue;
+
     fe_v.reinit(cell);
     cell->get_dof_indices(indices);
     for (unsigned int i = 0; i < fe.dofs_per_cell; ++i)

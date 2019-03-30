@@ -1,6 +1,7 @@
 #ifndef SNPROBLEM_H
 #define SNPROBLEM_H
 
+#include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/parameter_acceptor.h>
 #include <deal.II/lac/generic_linear_algebra.h>
 #include <deal.II/meshworker/loop.h>
@@ -58,7 +59,9 @@ private:
 
   /// MPI communicator
   MPI_Comm & comm;
-
+  /// Parallel cout
+  ConditionalOStream pcout;
+  
   /// Access to the description in the Problem
   const Description<dim> & description;
   /// Access to the discretization in the Problem

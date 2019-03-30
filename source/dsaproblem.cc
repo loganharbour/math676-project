@@ -18,6 +18,7 @@ template <int dim>
 DSAProblem<dim>::DSAProblem(Problem<dim> & problem)
   : ParameterAcceptor("DSAProblem"),
     comm(problem.get_comm()),
+    pcout(problem.get_pcout()),
     description(problem.get_description()),
     discretization(problem.get_discretization()),
     dof_handler(discretization.get_dof_handler()),
@@ -45,16 +46,8 @@ DSAProblem<dim>::setup()
                     discretization.get_sparsity_pattern(),
                     comm);
 
-  // Setup InfoBox for MeshWorker
-  UpdateFlags update_flags = update_quadrature_points | update_values | update_gradients;
-  info_box.add_update_flags_all(update_flags);
-  info_box.initialize(dof_handler.get_fe(), discretization.get_mapping());
-
-  // Assemble the constant LHS and RHS
+  // Assemble the constant LHS
   assemble_initial();
-
-  // Pass the matrix and rhs to the assembler
-  assembler.initialize(system_matrix, system_rhs);
 }
 
 template <int dim>
@@ -72,18 +65,10 @@ DSAProblem<dim>::solve()
   system_solution = 0;
   SolverControl control(1000, 1e-12);
   LA::SolverCG solver(control);
-  LA::MPI::PreconditionAMG preconditioner;
-  LA::MPI::PreconditionAMG::AdditionalData data;
-  preconditioner.initialize(system_matrix, data);
+  TrilinosWrappers::PreconditionBlockSSOR preconditioner;
+  preconditioner.initialize(system_matrix);
   solver.solve(system_matrix, system_solution, system_rhs, preconditioner);
-  std::cout << "  DSA converged after " << control.last_step() << " CG iterations" << std::endl;
-
-  // SolverControl control(1000, 1.e-12);
-  // SolverCG<Vector<double>> solver(control);
-  // PreconditionBlockSSOR<SparseMatrix<double>> preconditioner;
-  // preconditioner.initialize(system_matrix, dof_handler.get_fe().dofs_per_cell);
-  // solver.solve(system_matrix, system_solution, system_rhs, preconditioner);
-  // std::cout << "  DSA converged after " << control.last_step() << " CG iterations" << std::endl;
+  pcout << "  DSA converged after " << control.last_step() << " CG iterations" << std::endl;
 
   // Update scalar flux with change
   scalar_flux += system_solution;
@@ -93,8 +78,16 @@ template <int dim>
 void
 DSAProblem<dim>::assemble_initial()
 {
-  MeshWorker::Assembler::SystemSimple<LA::MPI::SparseMatrix, LA::MPI::Vector> initial_assembler;
-  initial_assembler.initialize(dsa_matrix, system_rhs);
+  UpdateFlags update_flags = update_values | update_JxW_values | update_gradients;
+  MeshWorker::IntegrationInfoBox<dim> info_box;
+  info_box.add_update_flags_all(update_flags);
+  info_box.initialize(dof_handler.get_fe(), discretization.get_mapping());
+
+  MeshWorker::Assembler::SystemSimple<LA::MPI::SparseMatrix, LA::MPI::Vector> assembler;
+  assembler.initialize(system_matrix, system_rhs);
+
+  MeshWorker::LoopControl loop_control;
+  loop_control.faces_to_ghost = MeshWorker::LoopControl::FaceOption::both;
 
   // Lambda functions for passing into MeshWorker::loop
   const auto cell_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
@@ -122,25 +115,30 @@ DSAProblem<dim>::assemble_initial()
       cell_worker,
       boundary_worker,
       face_worker,
-      initial_assembler);
+      assembler,
+      loop_control);
 }
 
 template <int dim>
 void
 DSAProblem<dim>::assemble()
 {
+  UpdateFlags update_flags = update_values | update_JxW_values;
+  MeshWorker::IntegrationInfoBox<dim> info_box;
+  info_box.add_update_flags_cell(update_flags);
+  info_box.initialize(dof_handler.get_fe(), discretization.get_mapping());
+
+  MeshWorker::Assembler::SystemSimple<LA::MPI::SparseMatrix, LA::MPI::Vector> assembler;
+  assembler.initialize(system_matrix, system_rhs);
+
   // Copy over LHS and reset RHS
   system_matrix.copy_from(dsa_matrix);
   system_rhs = 0;
 
-  // Lambda functions for passing into MeshWorker::loop
+  // Lambda function for passing into MeshWorker::loop
   const auto cell_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
                                MeshWorker::IntegrationInfo<dim> & info) {
     DSAProblem::integrate_cell(dinfo, info);
-  };
-  const auto boundary_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
-                                   MeshWorker::IntegrationInfo<dim> & info) {
-    DSAProblem::integrate_boundary(dinfo, info);
   };
 
   // Call loop to execute the integration
@@ -151,7 +149,7 @@ DSAProblem<dim>::assemble()
       dof_info,
       info_box,
       cell_worker,
-      boundary_worker,
+      NULL,
       NULL,
       assembler);
 }
@@ -175,14 +173,6 @@ DSAProblem<dim>::integrate_cell(MeshWorker::DoFInfo<dim> & dinfo,
   }
 
   LocalIntegrators::L2::L2(local_vector, fe, scalar_flux_change, sigma_s);
-}
-
-template <int dim>
-void
-DSAProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & /*dinfo*/,
-                                    MeshWorker::IntegrationInfo<dim> & /*info*/) const
-{
-  // Reflective BC correction will go here at some point
 }
 
 template <int dim>

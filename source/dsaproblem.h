@@ -1,6 +1,7 @@
 #ifndef DSA_PROBLEM
 #define DSA_PROBLEM
 
+#include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/parameter_acceptor.h>
 #include <deal.II/lac/generic_linear_algebra.h>
 #include <deal.II/meshworker/loop.h>
@@ -55,13 +56,12 @@ private:
   /// Cell integration term for MeshWorker
   void integrate_cell(MeshWorker::DoFInfo<dim> & dinfo,
                       MeshWorker::IntegrationInfo<dim> & info) const;
-  /// Boundary integration term for MeshWorker
-  void integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
-                          MeshWorker::IntegrationInfo<dim> & info) const;
 
   /// MPI communicator
   MPI_Comm & comm;
-
+  /// Parallel cout
+  ConditionalOStream pcout;
+  
   /// Access to the description in the Problem
   const Description<dim> & description;
   /// Access to the discretization in the Problem
@@ -82,11 +82,6 @@ private:
 
   /// System storage for the constant LHS
   LA::MPI::SparseMatrix dsa_matrix;
-
-  /// InfoBox for MeshWorker
-  MeshWorker::IntegrationInfoBox<dim> info_box;
-  /// Assembler used by the MeshWorker::loop
-  MeshWorker::Assembler::SystemSimple<LA::MPI::SparseMatrix, LA::MPI::Vector> assembler;
 
   /// Whether or not DSA is enabled
   bool enabled = true;

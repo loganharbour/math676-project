@@ -18,6 +18,7 @@ template <int dim>
 SNProblem<dim>::SNProblem(Problem<dim> & problem)
   : ParameterAcceptor("SNProblem"),
     comm(problem.get_comm()),
+    pcout(problem.get_pcout()),
     description(problem.get_description()),
     discretization(problem.get_discretization()),
     dof_handler(discretization.get_dof_handler()),
@@ -35,11 +36,9 @@ void
 SNProblem<dim>::setup()
 {
   // Setup InfoBox for MeshWorker
-  const unsigned int n_points = dof_handler.get_fe().degree + 1;
-  info_box.initialize_gauss_quadrature(n_points, n_points, n_points);
   info_box.initialize_update_flags();
-  UpdateFlags update_flags = update_quadrature_points | update_values | update_gradients;
-  info_box.add_update_flags(update_flags, true, true, true, true);
+  UpdateFlags update_flags = update_JxW_values | update_values | update_gradients;
+  info_box.add_update_flags_all(update_flags);
   info_box.initialize(dof_handler.get_fe(), discretization.get_mapping());
 
   // Pass the matrix and rhs to the assembler
@@ -75,8 +74,8 @@ SNProblem<dim>::solve_direction(const unsigned int d)
   preconditioner.initialize(system_matrix, data);
   solver.solve(system_matrix, system_solution, system_rhs, preconditioner);
 
-  std::cout << "  Direction " << d << " converged after " << solver_control.last_step()
-            << " iterations " << std::endl;
+  pcout << "  Direction " << d << " converged after " << solver_control.last_step()
+        << " iterations " << std::endl;
 
   // Update scalar flux at each node (weighed by angular weight)
   system_solution *= aq.w(d);
@@ -109,6 +108,8 @@ SNProblem<dim>::assemble_direction(const Tensor<1, dim> & dir)
 
   // Call loop to execute the integration
   MeshWorker::DoFInfo<dim> dof_info(dof_handler);
+  MeshWorker::LoopControl loop_control;
+  loop_control.faces_to_ghost = MeshWorker::LoopControl::FaceOption::both;
   MeshWorker::loop<dim, dim, MeshWorker::DoFInfo<dim>, MeshWorker::IntegrationInfoBox<dim>>(
       dof_handler.begin_active(),
       dof_handler.end(),
@@ -117,7 +118,8 @@ SNProblem<dim>::assemble_direction(const Tensor<1, dim> & dir)
       cell_worker,
       boundary_worker,
       face_worker,
-      assembler);
+      assembler,
+      loop_control);
 }
 
 template <int dim>

@@ -6,6 +6,7 @@
 #include "dsaproblem.h"
 #include "snproblem.h"
 
+#include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/parameter_acceptor.h>
 #include <deal.II/lac/generic_linear_algebra.h>
 
@@ -38,6 +39,8 @@ public:
   LA::MPI::Vector & get_system_rhs() { return system_rhs; }
   LA::MPI::Vector & get_system_solution() { return system_solution; }
 
+  ConditionalOStream & get_pcout() { return pcout; }
+
   template <typename T>
   static void saveVector(const std::vector<T> & v, const std::string filename)
   {
@@ -61,6 +64,8 @@ private:
 
   /// MPI communicator
   MPI_Comm comm;
+  /// Parallel cout
+  ConditionalOStream pcout;
 
   /// Problem description that holds material properties, boundary conditions, etc
   Description<dim> description;
