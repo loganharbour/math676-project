@@ -61,7 +61,7 @@ private:
   MPI_Comm & comm;
   /// Parallel cout
   ConditionalOStream pcout;
-  
+
   /// Access to the description in the Problem
   const Description<dim> & description;
   /// Access to the discretization in the Problem
