@@ -32,6 +32,11 @@ public:
   const MappingQ1<dim> & get_mapping() const { return mapping; }
   const std::set<unsigned int> & get_material_ids() const { return material_ids; }
   const IndexSet & get_locally_owned_dofs() const { return locally_owned_dofs; }
+  const parallel::distributed::Triangulation<dim> & get_triangulation() const
+  {
+    return triangulation;
+  }
+
 private:
   void generate_mesh();
 

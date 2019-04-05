@@ -135,12 +135,35 @@ template <int dim>
 void
 Problem<dim>::output_vtu() const
 {
-  std::ofstream output(vtu_filename + ".vtu");
+  const auto & triangulation = discretization.get_triangulation();
+
+  // DataOut setup
   DataOut<dim> data_out;
   data_out.attach_dof_handler(dof_handler);
   data_out.add_data_vector(scalar_flux, "scalar_flux");
+
+  // Build processor partitioning
+  Vector<float> subdomain(triangulation.n_active_cells());
+  for (unsigned int i = 0; i < subdomain.size(); ++i)
+    subdomain(i) = triangulation.locally_owned_subdomain();
+  data_out.add_data_vector(subdomain, "subdomain");
   data_out.build_patches();
+
+  // Write output for this local processor
+  const std::string filename =
+      (vtu_filename + "-" + Utilities::int_to_string(triangulation.locally_owned_subdomain(), 4));
+  std::ofstream output((filename + ".vtu").c_str());
   data_out.write_vtu(output);
+
+  // Write master output
+  if (Utilities::MPI::this_mpi_process(comm) == 0)
+  {
+    std::vector<std::string> filenames;
+    for (unsigned int i = 0; i < Utilities::MPI::n_mpi_processes(comm); ++i)
+      filenames.push_back(vtu_filename + "-" + Utilities::int_to_string(i, 4) + ".vtu");
+    std::ofstream master_output((vtu_filename + ".pvtu").c_str());
+    data_out.write_pvtu_record(master_output, filenames);
+  }
 }
 
 template Problem<1>::Problem();
