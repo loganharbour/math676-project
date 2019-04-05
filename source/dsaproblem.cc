@@ -65,7 +65,8 @@ DSAProblem<dim>::solve()
   system_solution = 0;
   SolverControl control(1000, 1e-12);
   LA::SolverCG solver(control);
-  TrilinosWrappers::PreconditionBlockSSOR preconditioner;
+  LA::MPI::PreconditionAMG preconditioner;
+  LA::MPI::PreconditionAMG::AdditionalData data;
   preconditioner.initialize(system_matrix);
   solver.solve(system_matrix, system_solution, system_rhs, preconditioner);
   pcout << "  DSA converged after " << control.last_step() << " CG iterations" << std::endl;
@@ -84,10 +85,7 @@ DSAProblem<dim>::assemble_initial()
   info_box.initialize(dof_handler.get_fe(), discretization.get_mapping());
 
   MeshWorker::Assembler::SystemSimple<LA::MPI::SparseMatrix, LA::MPI::Vector> assembler;
-  assembler.initialize(system_matrix, system_rhs);
-
-  MeshWorker::LoopControl loop_control;
-  loop_control.faces_to_ghost = MeshWorker::LoopControl::FaceOption::both;
+  assembler.initialize(dsa_matrix, system_rhs);
 
   // Lambda functions for passing into MeshWorker::loop
   const auto cell_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
@@ -115,8 +113,10 @@ DSAProblem<dim>::assemble_initial()
       cell_worker,
       boundary_worker,
       face_worker,
-      assembler,
-      loop_control);
+      assembler);
+
+  // Bring all the matrices together
+  dsa_matrix.compress(VectorOperation::add);
 }
 
 template <int dim>
