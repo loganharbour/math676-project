@@ -203,8 +203,8 @@ DSAProblem<dim>::integrate_face_initial(MeshWorker::DoFInfo<dim> & dinfo1,
   const double D2 = description.get_material(dinfo2.cell->material_id()).D;
 
   // Length of the cells in the orthogonal direction to this face
-  const unsigned int n1 = GeometryInfo<2>::unit_normal_direction[dinfo1.face_number];
-  const unsigned int n2 = GeometryInfo<2>::unit_normal_direction[dinfo2.face_number];
+  const unsigned int n1 = GeometryInfo<dim>::unit_normal_direction[dinfo1.face_number];
+  const unsigned int n2 = GeometryInfo<dim>::unit_normal_direction[dinfo2.face_number];
   const double h1 = dinfo1.cell->extent_in_direction(n1);
   const double h2 = dinfo2.cell->extent_in_direction(n2);
   // Polynomial degrees on each face
