@@ -128,7 +128,8 @@ Problem<dim>::scalar_flux_L2() const
     }
   }
 
-  return value;
+  // Gather among all processors
+  return Utilities::MPI::sum(value, comm);
 }
 
 template <int dim>
