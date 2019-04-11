@@ -1,19 +1,21 @@
-# Constant absorber example with isotropic boundary conditions that match
-# the constant solution value. One would expect a solution of q/sigma_a = 0.01
+# Constant absorber example with isotropic boundary conditions that match the
+# constant solution value on the bottom and left and reflecting boundary
+# conditions on the remaining boundaries. One would expect a solution of
+# q/sigma_a = 0.01 repeating.
 # ---------------------
 subsection Description
   set material_ids              = 0
   set material_sigma_s          = 0
   set material_sigma_t          = 100
   set material_src              = 1
-  set isotropic_boundary_ids    = 0
-  set isotropic_boundary_fluxes = 0.01
-  set vacuum_boundary_ids       =
+  set isotropic_boundary_ids    = 1, 3
+  set isotropic_boundary_fluxes = 0.01, 0.01
+  set reflective_boundary_ids   = 0, 2
 end
 
 
 subsection Discretization
-  set aq_order           = 10
+  set aq_order           = 8
   set uniform_refinement = 5
 end
 

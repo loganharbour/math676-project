@@ -23,7 +23,7 @@ Description<dim>::Description() : ParameterAcceptor("Description")
   add_parameter("isotropic_boundary_ids", isotropic_boundary_ids);
   add_parameter("isotropic_boundary_fluxes", isotropic_boundary_fluxes);
   add_parameter("reflective_boundary_ids", reflective_boundary_ids);
-  add_parameter("vacuum_boundary_ids", vacuum_boundary_ids); // default: {0}
+  add_parameter("vacuum_boundary_ids", vacuum_boundary_ids);
 }
 
 template <int dim>
@@ -74,6 +74,7 @@ Description<dim>::setup_bcs(const std::set<unsigned int> & mesh_boundary_ids)
   fill_bcs(BCTypes::Reflective, reflective_boundary_ids);
   fill_bcs(BCTypes::Vacuum, vacuum_boundary_ids);
 
+  // Check for a BC for every boundary id
   for (auto it = mesh_boundary_ids.begin(); it != mesh_boundary_ids.end(); ++it)
     if (bcs.find(*it) == bcs.end())
       throw ExcMessage("Missing boundary condition for boundary id " + std::to_string(*it));
@@ -102,9 +103,13 @@ Description<dim>::fill_bcs(const BCTypes type,
       bcs.emplace(ids[i], BC(type));
   }
 
-  // Set identifier for incident BCs if necessary
-  if (ids.size() != 0 && type != BCTypes::Vacuum)
-    incident_bcs = true;
+  if (ids.size() != 0)
+  {
+    if (type != BCTypes::Vacuum)
+      incident_bcs = true;
+    if (type == BCTypes::Reflective)
+      reflecting_bcs = true;
+  }
 }
 
 template <int dim>
@@ -125,19 +130,15 @@ Description<dim>::get_material(const unsigned int material_id) const
   return search->second;
 }
 
-template Description<1>::Description();
 template Description<2>::Description();
 template Description<3>::Description();
 
-template void Description<1>::setup(const Discretization<1> & discretization);
 template void Description<2>::setup(const Discretization<2> & discretization);
 template void Description<3>::setup(const Discretization<3> & discretization);
 
-template const BC & Description<1>::get_bc(const unsigned int boundary_id) const;
 template const BC & Description<2>::get_bc(const unsigned int boundary_id) const;
 template const BC & Description<3>::get_bc(const unsigned int boundary_id) const;
 
-template const Material & Description<1>::get_material(const unsigned int material_id) const;
 template const Material & Description<2>::get_material(const unsigned int material_id) const;
 template const Material & Description<3>::get_material(const unsigned int material_id) const;
 

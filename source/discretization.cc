@@ -1,5 +1,6 @@
 #include "discretization.h"
 
+#include <deal.II/base/utilities.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/lac/sparsity_tools.h>
@@ -61,32 +62,37 @@ Discretization<dim>::generate_mesh()
     throw ExcMessage("hypercube_bounds must be set (no other mesh currently supported)");
 
   // Generate hyper cube
-  GridGenerator::hyper_cube(triangulation, hypercube_bounds[0], hypercube_bounds[1]);
+  GridGenerator::hyper_cube(triangulation, hypercube_bounds[0], hypercube_bounds[1], true);
 
   // Refine if requested
   triangulation.refine_global(uniform_refinement);
 
-  // Fill the boundary and material ids that exist on the mesh
-  // TODO: Do this check correctly in parallel
+  // Fill the boundary and material ids that exist on the local mesh
   for (const auto & cell : dof_handler.active_cell_iterators())
   {
     if (!cell->is_locally_owned())
       continue;
 
-    material_ids.insert(cell->material_id());
+    local_material_ids.insert(cell->material_id());
     if (!cell->at_boundary())
       continue;
     for (unsigned int i = 0; i < GeometryInfo<dim>::faces_per_cell; ++i)
       if (cell->face(i)->at_boundary())
-        boundary_ids.insert(cell->face(i)->boundary_id());
+        local_boundary_ids.insert(cell->face(i)->boundary_id());
   }
+
+  // TODO: Communicate the boundary and material ids to all processors. Therefore,
+  // this is hardcoded for now.
+  if (dim == 2)
+    boundary_ids = {0, 1, 2, 3};
+  else
+    boundary_ids = {0, 1, 2, 3, 4, 5};
+  material_ids = {0};
 }
 
-template Discretization<1>::Discretization(MPI_Comm & comm);
 template Discretization<2>::Discretization(MPI_Comm & comm);
 template Discretization<3>::Discretization(MPI_Comm & comm);
 
-template void Discretization<1>::setup();
 template void Discretization<2>::setup();
 template void Discretization<3>::setup();
 } // namespace RadProblem

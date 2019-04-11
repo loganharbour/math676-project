@@ -166,11 +166,9 @@ Problem<dim>::output_vtu() const
   }
 }
 
-template Problem<1>::Problem();
 template Problem<2>::Problem();
 template Problem<3>::Problem();
 
-template void Problem<1>::run();
 template void Problem<2>::run();
 template void Problem<3>::run();
 

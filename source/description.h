@@ -67,6 +67,8 @@ public:
   const BC & get_bc(const unsigned int boundary_id) const;
   // Whether or not the problem has incident bcs
   bool has_incident_bcs() const { return incident_bcs; }
+  // Whether or not the problem has reflecting bcs
+  bool has_reflecting_bcs() const { return reflecting_bcs; }
 
   // Get the material for material_id
   const Material & get_material(const unsigned int material_id) const;
@@ -90,6 +92,8 @@ private:
   std::map<const unsigned int, const BC> bcs;
   // Whether or not we have incident boundary conditions
   bool incident_bcs = false;
+  // Whether or not we have reflecting boundary conditions
+  bool reflecting_bcs = false;
 
   // Input materials
   std::vector<unsigned int> material_ids = {};
@@ -98,7 +102,7 @@ private:
   std::vector<double> material_src = {};
 
   // Input vacuum boundary ids
-  std::vector<unsigned int> vacuum_boundary_ids = {0};
+  std::vector<unsigned int> vacuum_boundary_ids = {};
   // Input perpendicular incident flux boundary conditions
   std::vector<unsigned int> perpendicular_boundary_ids = {};
   std::vector<double> perpendicular_boundary_fluxes = {};

@@ -56,9 +56,13 @@ private:
   /// The angular quadrature object
   AngularQuadrature<dim> aq;
 
-  /// Boundary ids that exist on the mesh
+  /// Boundary ids that exist on the local mesh
+  std::set<unsigned int> local_boundary_ids;
+  /// Boundary ids that exist on the entire mesh
   std::set<unsigned int> boundary_ids;
-  /// Material ids that exist on the mesh
+  /// Material ids that exist on the local mesh
+  std::set<unsigned int> local_material_ids;
+  /// Material ids that exist on the entire mesh
   std::set<unsigned int> material_ids;
 
   /// Angular quadrature order

@@ -43,19 +43,101 @@ SNProblem<dim>::setup()
 
   // Pass the matrix and rhs to the assembler
   assembler.initialize(system_matrix, system_rhs);
+
+  // Allocate storage for reflecting boundaries
+  if (description.has_reflecting_bcs())
+  {
+    // Initialize IndexSet for outgoing flux for each direction
+    outgoing_reflective_dofs.resize(aq.n_dir());
+
+    QGauss<dim - 1> quadrature(1);
+    FEFaceValues<dim> fe(dof_handler.get_fe(), quadrature, update_normal_vectors);
+    std::vector<types::global_dof_index> dofs(fe.dofs_per_cell);
+    std::vector<types::global_dof_index> face_dofs(GeometryInfo<dim>::vertices_per_face);
+    for (const auto & cell : dof_handler.active_cell_iterators())
+    {
+      // Skip non-local and non-boundary cells
+      if (!cell->is_locally_owned() || !cell->at_boundary())
+        continue;
+
+      // Check each face
+      for (unsigned int f = 0; f < GeometryInfo<dim>::faces_per_cell; ++f)
+      {
+        // Skip non-boundary faces and non-reflective faces
+        const auto & face = cell->face(f);
+        if (!face->at_boundary() ||
+            description.get_bc(face->boundary_id()).type != BCTypes::Reflective)
+          continue;
+
+        // Outward-facing unit normal for this face
+        fe.reinit(cell, f);
+        const Tensor<1, dim> normal = fe.normal_vector(0);
+
+        // Dofs for this face
+        cell->get_dof_indices(dofs);
+        for (unsigned int fv = 0; fv < face_dofs.size(); ++fv)
+          face_dofs[fv] = dofs[GeometryInfo<dim>::face_to_cell_vertices(f, fv)];
+
+        // Add into the IndexSet for reflective dofs
+        reflective_dofs.add_indices(face_dofs.begin(), face_dofs.end());
+
+        // Add into the outgoing reflective dof IndexSet for each direction
+        for (unsigned int d = 0; d < aq.n_dir(); ++d)
+          if (aq.dir(d) * normal > 0)
+            outgoing_reflective_dofs[d].add_indices(face_dofs.begin(), face_dofs.end());
+      }
+    }
+
+    // Initialize storage for the outgoing reflective flux for each direction
+    outgoing_reflective_angular_flux.resize(aq.n_dir());
+    for (unsigned int d = 0; d < aq.n_dir(); ++d)
+      outgoing_reflective_angular_flux[d].reinit(outgoing_reflective_dofs[d]);
+
+    // Initialize storage for the scalar flux on reflecting boundaries
+    scalar_flux_reflective.reinit(reflective_dofs);
+    scalar_flux_reflective_old.reinit(reflective_dofs);
+  }
 }
 
 template <int dim>
 void
 SNProblem<dim>::solve_directions()
 {
-  // Copy to old scalar flux and zero scalar flux for update
+  // Copy to old scalar flux
   scalar_flux_old = scalar_flux;
-  scalar_flux = 0;
 
-  // Solve each direction
-  for (unsigned int d = 0; d < aq.n_dir(); ++d)
-    solve_direction(d);
+  for (unsigned int l = 0; l < 50; ++l)
+  {
+    // Zero for scalar flux update
+    scalar_flux = 0;
+
+    // Copy to old reflective solution
+    if (description.has_reflecting_bcs())
+    {
+      pcout << "  Reflective iteration " << l << std::endl;
+      scalar_flux_reflective_old = scalar_flux_reflective;
+    }
+
+    // Solve each direction
+    for (unsigned int d = 0; d < aq.n_dir(); ++d)
+      solve_direction(d);
+
+    if (description.has_reflecting_bcs())
+    {
+      // Update the new scalar flux on the reflective boundary
+      scalar_flux_reflective = scalar_flux;
+      // Compute norm of the scalar flux on the reflective boundary
+      const double norm = scalar_flux_reflective_L2();
+      pcout << "  Scalar flux reflecting L2 difference: " << std::scientific << std::setprecision(2)
+            << norm << std::endl
+            << std::endl;
+      // Converged
+      if (norm < 1e-12)
+        return;
+    }
+    else
+      return;
+  }
 }
 
 template <int dim>
@@ -63,7 +145,7 @@ void
 SNProblem<dim>::solve_direction(const unsigned int d)
 {
   // Assemble the system
-  assemble_direction(aq.dir(d));
+  assemble_direction(d);
 
   system_solution = 0;
 
@@ -77,6 +159,10 @@ SNProblem<dim>::solve_direction(const unsigned int d)
   pcout << "  Direction " << d << " converged after " << solver_control.last_step()
         << " iterations " << std::endl;
 
+  // Update the outgoing angular fluxes on the reflective boundaries
+  if (description.has_reflecting_bcs())
+    outgoing_reflective_angular_flux[d] = system_solution;
+
   // Update scalar flux at each node (weighed by angular weight)
   system_solution *= aq.w(d);
   scalar_flux += system_solution;
@@ -84,7 +170,7 @@ SNProblem<dim>::solve_direction(const unsigned int d)
 
 template <int dim>
 void
-SNProblem<dim>::assemble_direction(const Tensor<1, dim> & dir)
+SNProblem<dim>::assemble_direction(const unsigned int d)
 {
   // Zero lhs and rhs before assembly
   system_matrix = 0;
@@ -93,17 +179,17 @@ SNProblem<dim>::assemble_direction(const Tensor<1, dim> & dir)
   // Lambda functions for passing into MeshWorker::loop
   const auto cell_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
                                MeshWorker::IntegrationInfo<dim> & info) {
-    SNProblem::integrate_cell(dinfo, info, dir);
+    SNProblem::integrate_cell(dinfo, info, d);
   };
   const auto boundary_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
                                    MeshWorker::IntegrationInfo<dim> & info) {
-    SNProblem::integrate_boundary(dinfo, info, dir);
+    SNProblem::integrate_boundary(dinfo, info, d);
   };
   const auto face_worker = [&](MeshWorker::DoFInfo<dim> & dinfo1,
                                MeshWorker::DoFInfo<dim> & dinfo2,
                                MeshWorker::IntegrationInfo<dim> & info1,
                                MeshWorker::IntegrationInfo<dim> & info2) {
-    SNProblem::integrate_face(dinfo1, dinfo2, info1, info2, dir);
+    SNProblem::integrate_face(dinfo1, dinfo2, info1, info2, d);
   };
 
   // Call loop to execute the integration
@@ -126,8 +212,9 @@ template <int dim>
 void
 SNProblem<dim>::integrate_cell(MeshWorker::DoFInfo<dim> & dinfo,
                                MeshWorker::IntegrationInfo<dim> & info,
-                               const Tensor<1, dim> & dir) const
+                               const unsigned int d) const
 {
+  const auto dir = aq.dir(d);
   const FEValuesBase<dim> & fe_v = info.fe_values();
   FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
   Vector<double> & local_vector = dinfo.vector(0).block(0);
@@ -174,10 +261,14 @@ template <int dim>
 void
 SNProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
                                    MeshWorker::IntegrationInfo<dim> & info,
-                                   const Tensor<1, dim> & dir) const
+                                   const unsigned int d) const
 {
+  const auto & fe = dof_handler.get_fe();
+  const FEValuesBase<dim> & fe_v = info.fe_values();
+
   // Dot product between the direction and the outgoing normal
-  const double dir_dot_n = dir * info.fe_values().normal_vector(0);
+  const auto n = info.fe_values().normal_vector(0);
+  const double dir_dot_n = aq.dir(d) * n;
 
   // Face is incoming
   if (dir_dot_n < 0)
@@ -186,44 +277,59 @@ SNProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
     if (!description.has_incident_bcs())
       return;
 
+    // Set the values at each qp as necessary depending on type
+    std::vector<double> bc_values(fe_v.n_quadrature_points, 0);
     const auto & bc = description.get_bc(dinfo.face->boundary_id());
-
-    double bc_value = 0;
-    switch (bc.type)
+    // Isotropic boundary conditions
+    if (bc.type == BCTypes::Isotropic)
     {
-      case BCTypes::Vacuum:
-        return;
-      case BCTypes::Isotropic:
-        bc_value = bc.value;
-        break;
-      case BCTypes::Reflective:
-        throw ExcMessage("Reflective bc not supported yet");
-      case BCTypes::Perpendicular:
-        throw ExcMessage("Perpendicular bc not supported yet");
+      for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
+        bc_values[q] = bc.value;
     }
+    // Reflective boundary condition
+    else if (bc.type == BCTypes::Reflective)
+    {
+      // Direction that reflects into this direction
+      unsigned int d_from = aq.reflected_d(d, n);
 
-    const FEValuesBase<dim> & fe_v = info.fe_values();
+      for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
+      {
+        // Dof is not on this face
+        if (!fe.has_support_on_face(i, dinfo.face_number))
+          continue;
+        // Outgoing reflective angular flux at this dof from angle d_from
+        const double flux_i = outgoing_reflective_angular_flux[d_from][dinfo.indices[i]];
+        // Accumulate at quadrature points
+        for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
+          bc_values[q] += fe_v.shape_value(i, q) * flux_i;
+      }
+    }
+    // The other boundary types do not contribute to incoming faces
+    else
+      return;
+
     Vector<double> & local_vector = dinfo.vector(0).block(0);
     const std::vector<double> & JxW = fe_v.get_JxW_values();
 
     for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
       for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
-        local_vector(i) += -bc_value * dir_dot_n * fe_v.shape_value(i, q) * JxW[q];
+        if (fe.has_support_on_face(i, dinfo.face_number))
+          local_vector(i) += (-dir_dot_n) * bc_values[q] * fe_v.shape_value(i, q) * JxW[q];
   }
   // Face is outgoing
   else
   {
-    const FEValuesBase<dim> & fe_v = info.fe_values();
     FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
     const std::vector<double> & JxW = fe_v.get_JxW_values();
 
     for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
       for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
-      {
-        const double coeff = dir_dot_n * fe_v.shape_value(i, q) * JxW[q];
-        for (unsigned int j = 0; j < fe_v.dofs_per_cell; ++j)
-          local_matrix(i, j) += coeff * fe_v.shape_value(j, q);
-      }
+        if (fe.has_support_on_face(i, dinfo.face_number))
+        {
+          const double coeff = dir_dot_n * fe_v.shape_value(i, q) * JxW[q];
+          for (unsigned int j = 0; j < fe_v.dofs_per_cell; ++j)
+            local_matrix(i, j) += coeff * fe_v.shape_value(j, q);
+        }
   }
 }
 
@@ -233,47 +339,93 @@ SNProblem<dim>::integrate_face(MeshWorker::DoFInfo<dim> & dinfo1,
                                MeshWorker::DoFInfo<dim> & dinfo2,
                                MeshWorker::IntegrationInfo<dim> & info1,
                                MeshWorker::IntegrationInfo<dim> & info2,
-                               const Tensor<1, dim> & dir) const
+                               const unsigned int d) const
 {
   // Dot product between the direction and the outgoing normal of face 1
-  const double dir_dot_n1 = dir * info1.fe_values().normal_vector(0);
+  const double dir_dot_n1 = aq.dir(d) * info1.fe_values().normal_vector(0);
 
   // Whether the first cell is the outgoing cell or not
   const bool cell1_out = dir_dot_n1 > 0;
 
-  // FE values access for the outgoing and incoming cell
+  // FE values and dinfo access for the outgoing and incoming cell
   const auto & fe_v_out = (cell1_out ? info1.fe_values() : info2.fe_values());
   const auto & fe_v_in = (cell1_out ? info2.fe_values() : info1.fe_values());
+  auto & dinfo_out = (cell1_out ? dinfo1 : dinfo2);
+  auto & dinfo_in = (cell1_out ? dinfo2 : dinfo1);
 
   // System matrices for the u_out v_out matrix and the u_out v_in matrix
-  auto & uout_vout_matrix = (cell1_out ? dinfo1 : dinfo2).matrix(0, false).matrix;
-  auto & uout_vin_matrix = (cell1_out ? dinfo2 : dinfo1).matrix(0, true).matrix;
+  auto & uout_vout_matrix = dinfo_out.matrix(0, false).matrix;
+  auto & uout_vin_matrix = dinfo_in.matrix(0, true).matrix;
 
   // Reverse the direction for the dot product if cell 2 is the outgoing cell
   const double dir_dot_nout = (cell1_out ? dir_dot_n1 : -dir_dot_n1);
 
   // Use quadrature points from cell 1; reference element is the same
+  const auto & fe = dof_handler.get_fe();
   const std::vector<double> & JxW = info1.fe_values().get_JxW_values();
   for (unsigned int q = 0; q < fe_v_out.n_quadrature_points; ++q)
     for (unsigned int j = 0; j < fe_v_out.dofs_per_cell; ++j)
     {
+      if (!fe.has_support_on_face(j, dinfo_out.face_number))
+        continue;
       const double coeff = dir_dot_nout * fe_v_out.shape_value(j, q) * JxW[q];
       for (unsigned int i = 0; i < fe_v_out.dofs_per_cell; ++i)
-        uout_vout_matrix(i, j) += coeff * fe_v_out.shape_value(i, q);
+        if (fe.has_support_on_face(i, dinfo_out.face_number))
+          uout_vout_matrix(i, j) += coeff * fe_v_out.shape_value(i, q);
       for (unsigned int i = 0; i < fe_v_in.dofs_per_cell; ++i)
-        uout_vin_matrix(i, j) -= coeff * fe_v_in.shape_value(i, q);
+        if (fe.has_support_on_face(i, dinfo_in.face_number))
+          uout_vin_matrix(i, j) -= coeff * fe_v_in.shape_value(i, q);
     }
 }
 
-template SNProblem<1>::SNProblem(Problem<1> & problem);
+template <int dim>
+double
+SNProblem<dim>::scalar_flux_reflective_L2() const
+{
+  const auto & fe = dof_handler.get_fe();
+  QGauss<dim - 1> quadrature(fe.degree + 1);
+  FEFaceValues<dim> fe_v(fe, quadrature, update_values | update_JxW_values);
+  std::vector<types::global_dof_index> indices(fe.dofs_per_cell);
+  double value = 0;
+
+  for (const auto & cell : dof_handler.active_cell_iterators())
+  {
+    // Immediately skip non-local and non-boundary cells
+    if (!cell->is_locally_owned() || !cell->at_boundary())
+      continue;
+
+    cell->get_dof_indices(indices);
+
+    for (unsigned int f = 0; f < GeometryInfo<dim>::faces_per_cell; ++f)
+    {
+      // Skip non-boundary faces and non-reflective faces
+      const auto & face = cell->face(f);
+      if (!face->at_boundary() ||
+          description.get_bc(face->boundary_id()).type != BCTypes::Reflective)
+        continue;
+
+      fe_v.reinit(cell, f);
+      for (unsigned int i = 0; i < fe.dofs_per_cell; ++i)
+        if (fe.has_support_on_face(i, f))
+        {
+          const double diff =
+              scalar_flux_reflective[indices[i]] - scalar_flux_reflective_old[indices[i]];
+          for (unsigned int q = 0; q < quadrature.size(); ++q)
+            value += std::pow(fe_v.shape_value(i, q) * diff, 2) * fe_v.JxW(q);
+        }
+    }
+  }
+
+  // Gather among all processors
+  return Utilities::MPI::sum(value, comm);
+}
+
 template SNProblem<2>::SNProblem(Problem<2> & problem);
 template SNProblem<3>::SNProblem(Problem<3> & problem);
 
-template void SNProblem<1>::setup();
 template void SNProblem<2>::setup();
 template void SNProblem<3>::setup();
 
-template void SNProblem<1>::solve_directions();
 template void SNProblem<2>::solve_directions();
 template void SNProblem<3>::solve_directions();
 

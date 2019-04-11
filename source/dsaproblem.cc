@@ -276,15 +276,12 @@ DSAProblem<dim>::integrate_boundary_initial(MeshWorker::DoFInfo<dim> & dinfo,
   }
 }
 
-template DSAProblem<1>::DSAProblem(Problem<1> & problem);
 template DSAProblem<2>::DSAProblem(Problem<2> & problem);
 template DSAProblem<3>::DSAProblem(Problem<3> & problem);
 
-template void DSAProblem<1>::setup();
 template void DSAProblem<2>::setup();
 template void DSAProblem<3>::setup();
 
-template void DSAProblem<1>::solve();
 template void DSAProblem<2>::solve();
 template void DSAProblem<3>::solve();
 
