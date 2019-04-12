@@ -49,9 +49,7 @@ SNProblem<dim>::setup()
   if (description.has_reflecting_bcs())
   {
     std::set<HatDirection> reflective_normals;
-
-    // Initialize IndexSet for outgoing flux for each direction
-    outgoing_reflective_dofs.resize(aq.n_dir());
+    reflective_outgoing_flux.resize(aq.n_dir());
 
     QGauss<dim - 1> quadrature(1);
     FEFaceValues<dim> fe(dof_handler.get_fe(), quadrature, update_normal_vectors);
@@ -84,24 +82,21 @@ SNProblem<dim>::setup()
         for (unsigned int fv = 0; fv < face_dofs.size(); ++fv)
           face_dofs[fv] = dofs[GeometryInfo<dim>::face_to_cell_vertices(f, fv)];
 
-        // Add into the IndexSet for reflective dofs
-        reflective_dofs.add_indices(face_dofs.begin(), face_dofs.end());
+        // Initialize dofs for reflective scalar fluxes and flux integral (DSA)
+        for (const types::global_dof_index dof : face_dofs)
+        {
+          reflective_scalar_flux.emplace(dof, 0);
+          reflective_scalar_flux_old.emplace(dof, 0);
+          reflected_flux_integral.emplace(dof, 0);
+        }
 
-        // Add into the outgoing reflective dof IndexSet for each direction
+        // Initialize dofs for outgoing angular fluxes
         for (unsigned int d = 0; d < aq.n_dir(); ++d)
           if (aq.dir(d) * normal > 0)
-            outgoing_reflective_dofs[d].add_indices(face_dofs.begin(), face_dofs.end());
+            for (const types::global_dof_index dof : face_dofs)
+              reflective_outgoing_flux[d].emplace(dof, 0);
       }
     }
-
-    // Initialize storage for the outgoing reflective flux for each direction
-    outgoing_reflective_angular_flux.resize(aq.n_dir());
-    for (unsigned int d = 0; d < aq.n_dir(); ++d)
-      outgoing_reflective_angular_flux[d].reinit(outgoing_reflective_dofs[d]);
-
-    // Initialize storage for the scalar flux on reflecting boundaries
-    scalar_flux_reflective.reinit(reflective_dofs);
-    scalar_flux_reflective_old.reinit(reflective_dofs);
 
     // Now that we have the possible outward normals that are on reflecting boundaries,
     // initialize the angular quadrature
@@ -121,11 +116,15 @@ SNProblem<dim>::solve_directions()
     // Zero for scalar flux update
     scalar_flux = 0;
 
-    // Copy to old reflective solution
     if (description.has_reflecting_bcs())
     {
       pcout << "  Reflective iteration " << l << std::endl;
-      scalar_flux_reflective_old = scalar_flux_reflective;
+      // Copy to old reflective scalar flux
+      for (auto & dof_value_old_pair : reflective_scalar_flux_old)
+        dof_value_old_pair.second = reflective_scalar_flux[dof_value_old_pair.first];
+      // Zero reflective angular flux integral for DSA
+      for (auto & dof_value_pair : reflected_flux_integral)
+        dof_value_pair.second = 0;
     }
 
     // Solve each direction
@@ -135,12 +134,15 @@ SNProblem<dim>::solve_directions()
     if (description.has_reflecting_bcs())
     {
       // Update the new scalar flux on the reflective boundary
-      scalar_flux_reflective = scalar_flux;
+      for (auto & dof_new_pair : reflective_scalar_flux)
+        dof_new_pair.second = scalar_flux[dof_new_pair.first];
+
       // Compute norm of the scalar flux on the reflective boundary
       const double norm = scalar_flux_reflective_L2();
       pcout << "  Scalar flux reflecting L2 difference: " << std::scientific << std::setprecision(2)
             << norm << std::endl
             << std::endl;
+
       // Converged
       if (norm < 1e-12)
         return;
@@ -168,10 +170,9 @@ SNProblem<dim>::solve_direction(const unsigned int d)
   pcout << "  Direction " << d << " converged after " << solver_control.last_step()
         << " GMRES iterations " << std::endl;
 
-  // Update the outgoing angular fluxes on the reflective boundaries
-  if (description.has_reflecting_bcs())
-    outgoing_reflective_angular_flux[d] = system_solution;
-
+  // Update outgoing angular fluxes on the reflective boundaries
+  for (auto & dof_value_pair : reflective_outgoing_flux[d])
+    dof_value_pair.second = system_solution[dof_value_pair.first];
   // Update scalar flux at each node (weighed by angular weight)
   system_solution *= aq.w(d);
   scalar_flux += system_solution;
@@ -309,7 +310,7 @@ SNProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
         // Outgoing reflective angular flux at this dof from angle d_from
         for (const unsigned int d_from : reflect_from)
         {
-          const double flux_i = outgoing_reflective_angular_flux[d_from][dinfo.indices[i]];
+          const double flux_i = reflective_outgoing_flux[d_from].at(dinfo.indices[i]);
           // Accumulate at quadrature points
           for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
             bc_values[q] += fe_v.shape_value(i, q) * flux_i;
@@ -420,8 +421,8 @@ SNProblem<dim>::scalar_flux_reflective_L2() const
       for (unsigned int i = 0; i < fe.dofs_per_cell; ++i)
         if (fe.has_support_on_face(i, f))
         {
-          const double diff =
-              scalar_flux_reflective[indices[i]] - scalar_flux_reflective_old[indices[i]];
+          const unsigned int dof = indices[i];
+          const double diff = reflective_scalar_flux.at(dof) - reflective_scalar_flux_old.at(dof);
           for (unsigned int q = 0; q < quadrature.size(); ++q)
             value += std::pow(fe_v.shape_value(i, q) * diff, 2) * fe_v.JxW(q);
         }

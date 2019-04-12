@@ -80,18 +80,14 @@ private:
   /// Access the old scalar flux DGFEM solution in the Problem
   LA::MPI::Vector & scalar_flux_old;
 
-  /// Set that contins the dofs that are on the reflective boundary
-  IndexSet reflective_dofs;
-  /// Sets that contain outgoing dofs on the reflective boundary for each direction
-  std::vector<IndexSet> outgoing_reflective_dofs;
-  /// Scalar flux on the reflective boundary
-  LA::MPI::Vector scalar_flux_reflective;
-  /// Old (previous reflection iteration) scalar flux on the reflective boundary
-  LA::MPI::Vector scalar_flux_reflective_old;
-  /// Angular integration of the angular flux on the reflective boundary
-  LA::MPI::Vector reflected_flux_integral;
-  /// Outgoing reflective flux for each direction
-  std::vector<LA::MPI::Vector> outgoing_reflective_angular_flux;
+  /// Scalar flux on the reflective boundary (used for checking convergence)
+  std::map<types::global_dof_index, double> reflective_scalar_flux;
+  /// Old scalar flux on the reflective boundary (used for checking convergence)
+  std::map<types::global_dof_index, double> reflective_scalar_flux_old;
+  /// Outgoing angular flux on the reflective boundaries
+  std::vector<std::map<types::global_dof_index, double>> reflective_outgoing_flux;
+  /// Angular integration of the angular flux on the reflective boundaries (for DSA)
+  std::map<types::global_dof_index, double> reflected_flux_integral;
 
   /// System storage owned by the Problem
   LA::MPI::SparseMatrix & system_matrix;
