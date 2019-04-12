@@ -12,6 +12,77 @@ namespace RadProblem
 {
 using namespace dealii;
 
+enum HatDirection
+{
+  X = 0,
+  NEG_X = 1,
+  Y = 2,
+  NEG_Y = 3,
+  Z = 4,
+  NEG_Z = 5
+};
+
+template <int dim>
+static HatDirection
+get_hat_direction(const Tensor<1, dim> & v, const double eps = 1e-12)
+{
+  if (-std::abs(v[0]) + 1 < eps)
+    if (v[0] > 0)
+      return HatDirection::X;
+    else
+      return HatDirection::NEG_X;
+  else if (-std::abs(v[1]) + 1 < eps)
+    if (v[1] > 0)
+      return HatDirection::Y;
+    else
+      return HatDirection::NEG_Y;
+  else if (dim == 3 && -std::abs(v[2]) + 1 < eps)
+    if (v[2] > 0)
+      return HatDirection::Z;
+    else
+      return HatDirection::NEG_Z;
+  else
+    throw ExcMessage("Couldn't find hat direction");
+}
+
+template <int dim>
+static dealii::Tensor<1, dim>
+get_hat_direction(const HatDirection hat_direction)
+{
+  Tensor<1, dim> v;
+  if (dim == 2)
+  {
+    v[0] = 0;
+    v[1] = 0;
+  }
+  if (dim == 3)
+    v[2] = 0;
+
+  switch (hat_direction)
+  {
+    case X:
+      v[0] = 1;
+      break;
+    case NEG_X:
+      v[0] = -1;
+      break;
+    case Y:
+      v[1] = 1;
+      break;
+    case NEG_Y:
+      v[1] = -1;
+      break;
+    case Z:
+      v[2] = 1;
+      break;
+    case NEG_Z:
+      v[2] = -1;
+      break;
+  }
+
+  return v;
+}
+
 template <int dim>
 class AngularQuadrature
 {
@@ -20,6 +91,9 @@ public:
 
   void init(const unsigned int order)
   {
+    if (initialized)
+      throw ExcMessage("The AngularQuadrature object has already been initialized");
+
     if (dim == 2)
     {
       n_directions = order * 2;
@@ -62,68 +136,49 @@ public:
         }
       }
     }
-
-    init_reflected_directions();
   }
 
-  void init_reflected_directions()
+  void init_reflected_directions(const std::set<HatDirection> & reflective_normals)
   {
-    reflected_directions.resize(dim, std::vector<unsigned int>(n_directions));
-
-    // 0 is ehat_x, 1 is ehat_y, 2 is ehat_z
-    std::vector<dealii::Tensor<1, dim>> normals(dim);
-    normals[0][0] = 1;
-    normals[1][0] = 0;
-    normals[0][1] = 0;
-    normals[1][1] = 1;
-    if (dim == 3)
+    // Fill for each normal that is in reflective_normals
+    for (const HatDirection hat : reflective_normals)
     {
-      normals[2][0] = 0;
-      normals[2][1] = 0;
-      normals[0][2] = 0;
-      normals[1][2] = 0;
-      normals[2][2] = 1;
-    }
+      // This normal direction
+      const Tensor<1, dim> normal = get_hat_direction<dim>(hat);
 
-    // Fill for each ehat direction
-    for (unsigned int i = 0; i < dim; ++i)
-    {
-      // Find the incoming direction for each outgoing direction
+      // Check every outgoing direction to store what direction it goes into
       for (unsigned int d = 0; d < n_directions; ++d)
       {
-        // The reflected (incoming) direction for this outgoing direction
-        const Tensor<1, dim> dir_ref =
-            directions[d] - 2 * (directions[d] * normals[i]) * normals[i];
+        // Direction is not outgoing
+        if (directions[d] * normal < 0)
+          continue;
 
-        // Try each incoming direction. Pick the one with the smallest L2
-        // difference of the reflected direction and quadrature direction
-        unsigned int d_min;
+        // The direction that this direction reflects into
+        const Tensor<1, dim> dir_ref = directions[d] - 2 * (directions[d] * normal) * normal;
+
+        // Find the direction in the quadrature set most similar to dir_ref
+        unsigned int d_ref;
         double norm_min = std::numeric_limits<double>::max();
         for (unsigned int dp = 0; dp < n_directions; ++dp)
         {
           double norm = (directions[dp] - dir_ref).norm();
           if (norm < norm_min)
           {
-            d_min = dp;
+            d_ref = dp;
             norm_min = norm;
           }
         }
-        reflected_directions[i][d] = d_min;
+
+        // Store for the direction dp that direction d reflects into it on this normal
+        reflect_from_map[hat][d_ref].insert(d);
       }
     }
   }
 
-  unsigned int reflected_d(const unsigned int d, const Tensor<1, dim> & normal) const
+  // Get the directions that reflect into direction d_to on the surface defined by normal
+  std::set<unsigned int> reflect_from(const Tensor<1, dim> & normal, const unsigned int d_to) const
   {
-    double eps = 1e-12;
-    if (std::abs(normal[0]) - 1 < eps)
-      return reflected_directions[0][d];
-    else if (std::abs(normal[1]) - 1 < eps)
-      return reflected_directions[1][d];
-    else if (dim == 3 && std::abs(normal[2]) - 1 < eps)
-      return reflected_directions[2][d];
-    else
-      throw ExcMessage("Couldn't find reflected directon");
+    return reflect_from_map.at(get_hat_direction<dim>(normal)).at(d_to);
   }
 
   unsigned int n_dir() const { return n_directions; }
@@ -131,6 +186,9 @@ public:
   double w(const unsigned int d) const { return weights[d]; }
 
 private:
+  /// Whether or not the aq object is initialized
+  bool initialized = false;
+
   /// Number of directions
   unsigned int n_directions;
 
@@ -138,7 +196,7 @@ private:
   std::vector<Tensor<1, dim>> directions;
 
   /// Reflected directions
-  std::vector<std::vector<unsigned int>> reflected_directions;
+  std::map<HatDirection, std::map<unsigned int, std::set<unsigned int>>> reflect_from_map;
 
   /// Angular quadrature weights
   std::vector<double> weights;

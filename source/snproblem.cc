@@ -9,6 +9,7 @@
 #include <deal.II/integrators/l2.h>
 #include <deal.II/lac/precondition_block.h>
 #include <deal.II/lac/solver_richardson.h>
+#include <deal.II/lac/trilinos_solver.h>
 
 namespace RadProblem
 {
@@ -47,6 +48,8 @@ SNProblem<dim>::setup()
   // Allocate storage for reflecting boundaries
   if (description.has_reflecting_bcs())
   {
+    std::set<HatDirection> reflective_normals;
+
     // Initialize IndexSet for outgoing flux for each direction
     outgoing_reflective_dofs.resize(aq.n_dir());
 
@@ -73,6 +76,9 @@ SNProblem<dim>::setup()
         fe.reinit(cell, f);
         const Tensor<1, dim> normal = fe.normal_vector(0);
 
+        // Store this normal so we can compute the reflected directions later
+        reflective_normals.insert(get_hat_direction<dim>(normal));
+
         // Dofs for this face
         cell->get_dof_indices(dofs);
         for (unsigned int fv = 0; fv < face_dofs.size(); ++fv)
@@ -96,6 +102,10 @@ SNProblem<dim>::setup()
     // Initialize storage for the scalar flux on reflecting boundaries
     scalar_flux_reflective.reinit(reflective_dofs);
     scalar_flux_reflective_old.reinit(reflective_dofs);
+
+    // Now that we have the possible outward normals that are on reflecting boundaries,
+    // initialize the angular quadrature
+    aq.init_reflected_directions(reflective_normals);
   }
 }
 
@@ -106,7 +116,7 @@ SNProblem<dim>::solve_directions()
   // Copy to old scalar flux
   scalar_flux_old = scalar_flux;
 
-  for (unsigned int l = 0; l < 50; ++l)
+  for (unsigned int l = 0; l < 100000; ++l)
   {
     // Zero for scalar flux update
     scalar_flux = 0;
@@ -150,14 +160,13 @@ SNProblem<dim>::solve_direction(const unsigned int d)
   system_solution = 0;
 
   SolverControl solver_control(1000, 1e-12);
-  LA::SolverCG solver(solver_control);
+  TrilinosWrappers::SolverGMRES solver(solver_control);
   LA::MPI::PreconditionAMG preconditioner;
-  LA::MPI::PreconditionAMG::AdditionalData data;
-  preconditioner.initialize(system_matrix, data);
+  preconditioner.initialize(system_matrix);
   solver.solve(system_matrix, system_solution, system_rhs, preconditioner);
 
   pcout << "  Direction " << d << " converged after " << solver_control.last_step()
-        << " iterations " << std::endl;
+        << " GMRES iterations " << std::endl;
 
   // Update the outgoing angular fluxes on the reflective boundaries
   if (description.has_reflecting_bcs())
@@ -267,8 +276,8 @@ SNProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
   const FEValuesBase<dim> & fe_v = info.fe_values();
 
   // Dot product between the direction and the outgoing normal
-  const auto n = info.fe_values().normal_vector(0);
-  const double dir_dot_n = aq.dir(d) * n;
+  const auto normal = info.fe_values().normal_vector(0);
+  const double dir_dot_n = aq.dir(d) * normal;
 
   // Face is incoming
   if (dir_dot_n < 0)
@@ -289,8 +298,8 @@ SNProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
     // Reflective boundary condition
     else if (bc.type == BCTypes::Reflective)
     {
-      // Direction that reflects into this direction
-      unsigned int d_from = aq.reflected_d(d, n);
+      // Directions that reflect into this direction
+      const std::set<unsigned int> reflect_from = aq.reflect_from(normal, d);
 
       for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
       {
@@ -298,10 +307,13 @@ SNProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
         if (!fe.has_support_on_face(i, dinfo.face_number))
           continue;
         // Outgoing reflective angular flux at this dof from angle d_from
-        const double flux_i = outgoing_reflective_angular_flux[d_from][dinfo.indices[i]];
-        // Accumulate at quadrature points
-        for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
-          bc_values[q] += fe_v.shape_value(i, q) * flux_i;
+        for (const unsigned int d_from : reflect_from)
+        {
+          const double flux_i = outgoing_reflective_angular_flux[d_from][dinfo.indices[i]];
+          // Accumulate at quadrature points
+          for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
+            bc_values[q] += fe_v.shape_value(i, q) * flux_i;
+        }
       }
     }
     // The other boundary types do not contribute to incoming faces

@@ -24,7 +24,7 @@ public:
   void renumber_dofs(const unsigned int h);
   void setup();
 
-  const AngularQuadrature<dim> & get_aq() const { return aq; }
+  AngularQuadrature<dim> & get_aq() { return aq; }
   const std::set<unsigned int> & get_boundary_ids() const { return boundary_ids; }
   const DoFHandler<dim> & get_dof_handler() const { return dof_handler; }
   const DynamicSparsityPattern & get_sparsity_pattern() const { return dsp; }

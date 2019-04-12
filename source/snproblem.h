@@ -73,7 +73,7 @@ private:
   /// Access to the dof_handler in the Description
   const DoFHandler<dim> & dof_handler;
   /// Access to the angular quadrature
-  const AngularQuadrature<dim> & aq;
+  AngularQuadrature<dim> & aq;
 
   /// Access the scalar flux DGFEM solution in the Problem
   LA::MPI::Vector & scalar_flux;
