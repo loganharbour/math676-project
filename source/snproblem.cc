@@ -26,10 +26,13 @@ SNProblem<dim>::SNProblem(Problem<dim> & problem)
     aq(discretization.get_aq()),
     scalar_flux(problem.get_scalar_flux()),
     scalar_flux_old(problem.get_scalar_flux_old()),
+    reflected_flux_integral(problem.get_reflected_flux_integral()),
     system_matrix(problem.get_system_matrix()),
     system_rhs(problem.get_system_rhs()),
     system_solution(problem.get_system_solution())
 {
+  // Number of reflective BC iterations
+  add_parameter("reflective_bc_iterations", reflective_bc_iterations);
 }
 
 template <int dim>
@@ -73,21 +76,25 @@ SNProblem<dim>::setup()
         // Outward-facing unit normal for this face
         fe.reinit(cell, f);
         const Tensor<1, dim> normal = fe.normal_vector(0);
+        const HatDirection normal_hat = get_hat_direction<dim>(normal);
 
         // Store this normal so we can compute the reflected directions later
-        reflective_normals.insert(get_hat_direction<dim>(normal));
+        reflective_normals.insert(normal_hat);
 
         // Dofs for this face
         cell->get_dof_indices(dofs);
         for (unsigned int fv = 0; fv < face_dofs.size(); ++fv)
           face_dofs[fv] = dofs[GeometryInfo<dim>::face_to_cell_vertices(f, fv)];
 
-        // Initialize dofs for reflective scalar fluxes and flux integral (DSA)
         for (const types::global_dof_index dof : face_dofs)
         {
+          // Initialize storage for the scalar flux on the reflective boundaries
           reflective_scalar_flux.emplace(dof, 0);
           reflective_scalar_flux_old.emplace(dof, 0);
+          // Initialize storage for the integral of the angular flux
           reflected_flux_integral.emplace(dof, 0);
+          // Store this normal for computation of the reflected flux integral later
+          reflective_dof_normals.emplace(dof, normal_hat);
         }
 
         // Initialize dofs for outgoing angular fluxes
@@ -111,7 +118,7 @@ SNProblem<dim>::solve_directions()
   // Copy to old scalar flux
   scalar_flux_old = scalar_flux;
 
-  for (unsigned int l = 0; l < 100000; ++l)
+  for (unsigned int l = 0; l < reflective_bc_iterations; ++l)
   {
     // Zero for scalar flux update
     scalar_flux = 0;
@@ -156,6 +163,10 @@ template <int dim>
 void
 SNProblem<dim>::solve_direction(const unsigned int d)
 {
+  // Update integral over the incoming fluxes on the reflective boundary
+  if (description.has_reflecting_bcs())
+    update_reflected_flux_integral(d, true);
+
   // Assemble the system
   assemble_direction(d);
 
@@ -170,9 +181,15 @@ SNProblem<dim>::solve_direction(const unsigned int d)
   pcout << "  Direction " << d << " converged after " << solver_control.last_step()
         << " GMRES iterations " << std::endl;
 
-  // Update outgoing angular fluxes on the reflective boundaries
-  for (auto & dof_value_pair : reflective_outgoing_flux[d])
-    dof_value_pair.second = system_solution[dof_value_pair.first];
+  if (description.has_reflecting_bcs())
+  {
+    // Update outgoing angular fluxes on the reflective boundaries
+    for (auto & dof_value_pair : reflective_outgoing_flux[d])
+      dof_value_pair.second = system_solution[dof_value_pair.first];
+    // Update integral over the outgoing fluxes on the reflective boundary
+    update_reflected_flux_integral(d, false);
+  }
+
   // Update scalar flux at each node (weighed by angular weight)
   system_solution *= aq.w(d);
   scalar_flux += system_solution;
@@ -300,7 +317,7 @@ SNProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
     else if (bc.type == BCTypes::Reflective)
     {
       // Directions that reflect into this direction
-      const std::set<unsigned int> reflect_from = aq.reflect_from(normal, d);
+      const std::set<unsigned int> & reflect_from = aq.reflect_from(normal, d);
 
       for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
       {
@@ -389,6 +406,28 @@ SNProblem<dim>::integrate_face(MeshWorker::DoFInfo<dim> & dinfo1,
         if (fe.has_support_on_face(i, dinfo_in.face_number))
           uout_vin_matrix(i, j) -= coeff * fe_v_in.shape_value(i, q);
     }
+}
+
+template <int dim>
+void
+SNProblem<dim>::update_reflected_flux_integral(const unsigned int d, const bool incoming)
+{
+  // Loop over each reflective dof and its corresponding outward normal
+  for (const auto & dof_normal_pair : reflective_dof_normals)
+  {
+    const unsigned int dof = dof_normal_pair.first;
+    const Tensor<1, dim> normal = get_hat_direction<dim>(dof_normal_pair.second);
+    const double dir_dot_n = aq.dir(d) * normal;
+    const double w = aq.w(d);
+
+    // Incoming integration: over the directions that reflect into d
+    if (incoming && dir_dot_n < 0)
+      for (const unsigned int d_from : aq.reflect_from(normal, d))
+        reflected_flux_integral[dof] -= w * dir_dot_n * reflective_outgoing_flux[d_from].at(dof);
+    // Outgoing integration: only over exiting angular flux from d
+    else if (!incoming && dir_dot_n > 0)
+      reflected_flux_integral[dof] -= w * dir_dot_n * reflective_outgoing_flux[d].at(dof);
+  }
 }
 
 template <int dim>

@@ -1,6 +1,8 @@
 #ifndef SNPROBLEM_H
 #define SNPROBLEM_H
 
+#include "angular_quadrature.h"
+
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/parameter_acceptor.h>
 #include <deal.II/lac/generic_linear_algebra.h>
@@ -59,6 +61,8 @@ private:
 
   /// Compute the L2 difference of the scalar flux on the reflective boundary
   double scalar_flux_reflective_L2() const;
+  /// Update the reflected flux integral
+  void update_reflected_flux_integral(const unsigned int d, const bool incoming);
 
   /// MPI communicator
   MPI_Comm & comm;
@@ -80,6 +84,8 @@ private:
   /// Access the old scalar flux DGFEM solution in the Problem
   LA::MPI::Vector & scalar_flux_old;
 
+  /// The unit normal for each reflective boundary
+  std::map<types::global_dof_index, HatDirection> reflective_dof_normals;
   /// Scalar flux on the reflective boundary (used for checking convergence)
   std::map<types::global_dof_index, double> reflective_scalar_flux;
   /// Old scalar flux on the reflective boundary (used for checking convergence)
@@ -87,7 +93,7 @@ private:
   /// Outgoing angular flux on the reflective boundaries
   std::vector<std::map<types::global_dof_index, double>> reflective_outgoing_flux;
   /// Angular integration of the angular flux on the reflective boundaries (for DSA)
-  std::map<types::global_dof_index, double> reflected_flux_integral;
+  std::map<types::global_dof_index, double> & reflected_flux_integral;
 
   /// System storage owned by the Problem
   LA::MPI::SparseMatrix & system_matrix;
@@ -98,6 +104,8 @@ private:
   MeshWorker::IntegrationInfoBox<dim> info_box;
   /// Assembler used by the MeshWorker::loop
   MeshWorker::Assembler::SystemSimple<LA::MPI::SparseMatrix, LA::MPI::Vector> assembler;
+
+  unsigned int reflective_bc_iterations = 20;
 };
 } // namespace RadProblem
 

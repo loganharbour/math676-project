@@ -56,6 +56,9 @@ private:
   /// Cell integration term for MeshWorker
   void integrate_cell(MeshWorker::DoFInfo<dim> & dinfo,
                       MeshWorker::IntegrationInfo<dim> & info) const;
+  /// Boundary integration term for MeshWorker
+  void integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
+                          MeshWorker::IntegrationInfo<dim> & info) const;
 
   /// MPI communicator
   MPI_Comm & comm;
@@ -75,6 +78,9 @@ private:
   /// Access the old scalar flux DGFEM solution in the Problem
   const LA::MPI::Vector & scalar_flux_old;
 
+  /// Angular integration of the angular flux on the reflective boundaries (for DSA)
+  std::map<types::global_dof_index, double> & reflected_flux_integral;
+
   /// System storage owned by the Problem
   LA::MPI::SparseMatrix & system_matrix;
   LA::MPI::Vector & system_rhs;
@@ -85,6 +91,8 @@ private:
 
   /// Whether or not DSA is enabled
   bool enabled = true;
+  /// Whether or not acceleration using dJ is enabled for reflective bcs
+  bool reflective_bc_acceleration = true;
 };
 } // namespace RadProblem
 

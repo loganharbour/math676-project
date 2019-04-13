@@ -38,6 +38,10 @@ public:
   LA::MPI::SparseMatrix & get_system_matrix() { return system_matrix; }
   LA::MPI::Vector & get_system_rhs() { return system_rhs; }
   LA::MPI::Vector & get_system_solution() { return system_solution; }
+  std::map<types::global_dof_index, double> & get_reflected_flux_integral()
+  {
+    return reflected_flux_integral;
+  }
 
   ConditionalOStream & get_pcout() { return pcout; }
 
@@ -83,6 +87,9 @@ private:
   LA::MPI::Vector scalar_flux;
   /// Finite element representation of the scalar flux at the previous iteration
   LA::MPI::Vector scalar_flux_old;
+
+  /// Angular integration of the angular flux on the reflective boundaries (for DSA)
+  std::map<types::global_dof_index, double> reflected_flux_integral;
 
   /// System storage
   LA::MPI::SparseMatrix system_matrix;

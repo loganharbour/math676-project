@@ -24,12 +24,16 @@ DSAProblem<dim>::DSAProblem(Problem<dim> & problem)
     dof_handler(discretization.get_dof_handler()),
     scalar_flux(problem.get_scalar_flux()),
     scalar_flux_old(problem.get_scalar_flux_old()),
+    reflected_flux_integral(problem.get_reflected_flux_integral()),
     system_matrix(problem.get_system_matrix()),
     system_rhs(problem.get_system_rhs()),
     system_solution(problem.get_system_solution())
 {
   // Whether or not DSA is enabled (default: true)
   add_parameter("enabled", enabled);
+
+  // Whether or not reflective bc acceleration is enabled (default: true)
+  add_parameter("reflective_bc_acceleration", reflective_bc_acceleration);
 }
 
 template <int dim>
@@ -126,6 +130,8 @@ DSAProblem<dim>::assemble()
   UpdateFlags update_flags = update_values | update_JxW_values;
   MeshWorker::IntegrationInfoBox<dim> info_box;
   info_box.add_update_flags_cell(update_flags);
+  if (description.has_reflecting_bcs() && reflective_bc_acceleration)
+    info_box.add_update_flags_boundary(update_flags);
   info_box.initialize(dof_handler.get_fe(), discretization.get_mapping());
 
   MeshWorker::Assembler::SystemSimple<LA::MPI::SparseMatrix, LA::MPI::Vector> assembler;
@@ -135,10 +141,14 @@ DSAProblem<dim>::assemble()
   system_matrix.copy_from(dsa_matrix);
   system_rhs = 0;
 
-  // Lambda function for passing into MeshWorker::loop
+  // Lambda functions for passing into MeshWorker::loop
   const auto cell_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
                                MeshWorker::IntegrationInfo<dim> & info) {
     DSAProblem::integrate_cell(dinfo, info);
+  };
+  const auto boundary_worker = [&](MeshWorker::DoFInfo<dim> & dinfo,
+                                   MeshWorker::IntegrationInfo<dim> & info) {
+    DSAProblem::integrate_boundary(dinfo, info);
   };
 
   // Call loop to execute the integration
@@ -149,7 +159,7 @@ DSAProblem<dim>::assemble()
       dof_info,
       info_box,
       cell_worker,
-      NULL,
+      boundary_worker,
       NULL,
       assembler);
 }
@@ -173,6 +183,28 @@ DSAProblem<dim>::integrate_cell(MeshWorker::DoFInfo<dim> & dinfo,
   }
 
   LocalIntegrators::L2::L2(local_vector, fe, scalar_flux_change, sigma_s);
+}
+
+template <int dim>
+void
+DSAProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
+                                    MeshWorker::IntegrationInfo<dim> & info) const
+{
+  if (!reflective_bc_acceleration || !description.has_reflecting_bcs() ||
+      description.get_bc(dinfo.face->boundary_id()).type != BCTypes::Reflective)
+    return;
+
+  Vector<double> & local_vector = dinfo.vector(0).block(0);
+  const auto & fe = dof_handler.get_fe();
+  const FEValuesBase<dim> & fe_v = info.fe_values();
+  const std::vector<double> & JxW = fe_v.get_JxW_values();
+  for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
+    if (fe.has_support_on_face(i, dinfo.face_number))
+    {
+      const double dJ_i = reflected_flux_integral.at(dinfo.indices[i]);
+      for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
+        local_vector(i) -= fe_v.shape_value(i, q) * JxW[q] * dJ_i;
+    }
 }
 
 template <int dim>

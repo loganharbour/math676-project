@@ -176,7 +176,8 @@ public:
   }
 
   // Get the directions that reflect into direction d_to on the surface defined by normal
-  std::set<unsigned int> reflect_from(const Tensor<1, dim> & normal, const unsigned int d_to) const
+  const std::set<unsigned int> & reflect_from(const Tensor<1, dim> & normal,
+                                              const unsigned int d_to) const
   {
     return reflect_from_map.at(get_hat_direction<dim>(normal)).at(d_to);
   }
