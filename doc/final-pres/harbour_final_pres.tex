@@ -1,0 +1,113 @@
+\documentclass[xcolor={usenames,dvipsnames,svgnames,table}, 10pt]{beamer}
+
+\mode<presentation>
+\usetheme{Madrid}
+
+\usecolortheme[RGB={80,0,0}]{structure}
+\useoutertheme[subsection=false]{miniframes}
+\useinnertheme{default}
+
+% hide navigation controlls
+\setbeamertemplate{navigation symbols}{}
+
+\setbeamercolor{normal text}{fg=black}
+\setbeamercovered{dynamic}
+\beamertemplatetransparentcovereddynamicmedium
+\setbeamertemplate{caption}[numbered]
+
+\definecolor{Maroon}{RGB}{80,0,0}
+\definecolor{BurntOrange}{RGB}{204,85,0}
+
+% load macros and prevent authblk from loading
+\input{macros.tex}
+\dontusepackage{authblk}
+
+% load packages, settings and definitions
+\input{packages.tex}
+\input{settings.tex}
+\input{definitions.tex}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{tikz}
+
+% nicer item settings
+\setlist[1]{nolistsep,label=\(\textcolor{Maroon}{\blacksquare}\)}
+\setlist[2]{nolistsep,label=\(\textcolor{Maroon}{\bullet}\)}
+
+\setenumerate[1]{
+	label=\protect\usebeamerfont{enumerate item}%
+	\protect\usebeamercolor[fg]{enumerate item}%
+	\insertenumlabel.
+}
+
+\newcommand{\neutranie}{\tikz[baseline=-0.75ex,black]{
+		\draw circle (2mm);
+		\node[fill,circle,inner sep=0.5pt] (left eye) at (135:0.8mm) {};
+		\node[fill,circle,inner sep=0.5pt] (right eye) at (45:0.8mm) {};
+		\draw (-150:0.9mm) -- (-60:1.3mm);
+	}
+}
+
+\newcommand{\vx}{\mathbf{x}} % x vector
+\newcommand{\vo}{\pmb{\Omega}} % omega vector
+\newcommand{\vn}{\mathbf{n}} % normal vector
+\newcommand{\spatial}{\mathcal{D}} % spatial domain representation
+\newcommand{\bd}{\delta \mathcal{D}} % boundary representation
+\newcommand{\angular}{\mathcal{S}} % angular domain representation
+
+\title[2D S$_N$ with Diffusion Acceleration]{2D S$_N$ Radiation Transport with Diffusion Acceleration}
+\subtitle{MATH 676 -- Final Presentation}
+\author[Logan Harbour]{Logan H. Harbour}
+\institute[]{Department of Nuclear Engineering \\ Texas A\&M University}
+\date[May 1, 2019]
+
+\newcommand{\pinp}[2]{\left(#1,#2\right)}
+
+\begin{document}
+
+{
+\setbeamertemplate{headline}[default] 
+\begin{frame}
+\vfill
+\titlepage
+\vfill
+\begin{figure}[t]
+	\centering
+	\includegraphics[width=.5\textwidth]{images/nuen}
+\end{figure}
+\vfill
+\end{frame}
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}\frametitle{One-group Linear Boltzmann Equation}
+	For a single group, $d$:
+	\begin{equation}
+		\label{eq:boltzmann}
+		\vo_d \cdot \nabla \psi_d(\vx) + \left(\sigma_a(\vx) + \sigma_s(\vx)\right) \psi_d(\vx) - \frac{\sigma_s(\vx)}{2\pi} \sum_{d = 1}^{N_\Omega} \omega_d \psi_d(\vx) = q(\vx)\,,
+	\end{equation}
+	Let $\mathbb{T}_h$ be the set of all cells of the triangulation in a discontinuous approximation space. The DG weak form with test function $v_d$ is
+	\begin{multline}
+		\sum_{K \in \mathbb{T}_h} \Big[ \pinp{-\vo_d \cdot \nabla v_d}{\psi_d}_K + \pinp{\psi_d^+ \vo_d \cdot \vn}{v_d}_{\delta K} + \pinp{\sigma_t \psi_d}{v_d}_K  \\ - \pinp{\sigma_s \phi}{v_d}_K = \pinp{q}{v_d}_K\Big]\,,
+	\end{multline}
+	where $\phi$ is the \textit{scalar flux}, $\phi = \frac{1}{2\pi} \sum_d^{N_\Omega} \omega_d \psi_d$, and $\psi_d^+$ is the upwind value of $\psi_d$ (the value from the side of the face in which $\vo \cdot \vn \geq 0$).
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}\frametitle{Source Iteration}
+	To solve, cast Eq. \eqref{eq:boltzmann} with iterative index $\ell$ as
+	\begin{equation}
+		\label{eq:source-iteation}
+		\vo_d \cdot \nabla \psi_d^{(\ell + 1)} + \sigma_t \psi_d^{(\ell + 1)} = \sigma_s \phi^{(\ell)} + q\,,
+	\end{equation}
+	where $\ell$ is the iterative index, $\psi_d^{(0)} = \phi^{(0)} = \vec{0}$. Note that for $\sigma_s = 0$, the method converges in the first iteration. After solving each direction, $d$, for an iteration $\ell$ in Eq. \eqref{eq:source-iteation}, update the scalar flux with
+	\[
+		\phi^{(\ell + 1)} = \frac{1}{2\pi} \sum_{d = 1}^{N_\Omega} w_d \psi_d^{(\ell + 1)}\,.
+	\]
+	As $\sigma_s / \sigma_t \to 1$, particles scatter more before they are absorbed $\rightarrow$ \textbf{\textcolor{Maroon}{the number of source iterations becomes significant!}} This problem becomes the goal of this work: introduce a diffusion problem as a preconditioner for Eq. \eqref{eq:source-iteation}.
+\end{frame}
+
+\end{document}
