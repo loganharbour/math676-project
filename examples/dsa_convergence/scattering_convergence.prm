@@ -3,11 +3,12 @@ subsection Description
   set material_sigma_s = 1
   set material_sigma_t = 100
   set material_src     = 1
+  set vacuum_boundary_ids = 0, 1, 2, 3
 end
 
 
 subsection Discretization
-  set uniform_refinement = 5
+  set uniform_refinement = 4
 end
 
 
