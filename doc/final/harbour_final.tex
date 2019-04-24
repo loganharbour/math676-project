@@ -30,6 +30,7 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{tikz}
+\usepackage{stmaryrd}
 
 % nicer item settings
 \setlist[1]{nolistsep,label=\(\textcolor{Maroon}{\blacksquare}\)}
@@ -83,7 +84,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}\frametitle{One-group Linear Boltzmann Equation}
-	For a single group, $d$:
+	Start with the one-group S$_N$ transport equation for a single direction $d$ (neglecting boundary conditions for simplicity), as
 	\begin{equation}
 		\label{eq:boltzmann}
 		\vo_d \cdot \nabla \psi_d(\vx) + \left(\sigma_a(\vx) + \sigma_s(\vx)\right) \psi_d(\vx) - \frac{\sigma_s(\vx)}{2\pi} \sum_{d = 1}^{N_\Omega} \omega_d \psi_d(\vx) = q(\vx)\,,
@@ -103,11 +104,53 @@
 		\label{eq:source-iteation}
 		\vo_d \cdot \nabla \psi_d^{(\ell + 1)} + \sigma_t \psi_d^{(\ell + 1)} = \sigma_s \phi^{(\ell)} + q\,,
 	\end{equation}
-	where $\ell$ is the iterative index, $\psi_d^{(0)} = \phi^{(0)} = \vec{0}$. Note that for $\sigma_s = 0$, the method converges in the first iteration. After solving each direction, $d$, for an iteration $\ell$ in Eq. \eqref{eq:source-iteation}, update the scalar flux with
+	where $\ell$ is the iterative index, $\psi_d^{(0)} = \phi^{(0)} = \vec{0}$. After solving each direction, $d$, for an iteration $\ell$ in Eq. \eqref{eq:source-iteation}, update the scalar flux with
 	\[
 		\phi^{(\ell + 1)} = \frac{1}{2\pi} \sum_{d = 1}^{N_\Omega} w_d \psi_d^{(\ell + 1)}\,.
 	\]
-	As $\sigma_s / \sigma_t \to 1$, particles scatter more before they are absorbed $\rightarrow$ \textbf{\textcolor{Maroon}{the number of source iterations becomes significant!}} This problem becomes the goal of this work: introduce a diffusion problem as a preconditioner for Eq. \eqref{eq:source-iteation}.
+	As $\sigma_s / \sigma_t \to 1$, particles scatter more before they are absorbed $\rightarrow$ \textbf{\textcolor{Maroon}{the number of source iterations becomes significant!}} 
 \end{frame}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}\frametitle{Diffusion Acceleration}
+	Simple algebraic manipulations can show that the error in $\psi^{\ell + 1}$ satisfies the transport equation with a source equal to:
+	\[
+		R^{\ell + 1} = \frac{\sigma_s}{2\pi} (\phi^{\ell + 1} - \phi^\ell)\,.
+	\]
+	Fourier analysis shows that the angular flux error has a linearly anisotropic angular dependence. The diffusion approximation is exact for such a dependence, therefore we can cast the diffusion problem with the source above to form an error equation with the diffusion approximation that will attenuate the errors most poorly attenuated by the transport solve. The approximation is cast as:
+	\begin{equation}
+		\label{eq:diffusion}
+		-\nabla \cdot D \nabla \delta e^{\ell + 1} + \sigma_a \delta e^{\ell + 1} = \sigma_s \left( \phi^{\ell + 1} - \phi^\ell\right)\,,
+	\end{equation}
+	where $e^{\ell+1}$ is the approximated error in $\phi^{\ell + 1}$ and $D = 1/3 \sigma_t$.
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}\frametitle{Diffusion Acceleration (cont.)}
+	Casting Equation \eqref{eq:diffusion} in the same DG space with interior edges $\mathcal{E}_h^i$ and boundary edges $\mathcal{E}_h^b$ using a modified interior penalty method for the face terms we obtain
+	\begin{multline}
+		\int_{\mathbb{T}_h} (D \nabla e \cdot \nabla v + \sigma_a e v) + \int_{\mathcal{E}_h^i} \left( \{\!\!\{ D \delta_n e \}\!\!\} \llbracket v \rrbracket + \{\!\!\{ D \delta_n v \}\!\!\} \llbracket e \rrbracket + \kappa \llbracket e \rrbracket \llbracket v \rrbracket \right) \\
+		+ \int_{\mathcal{E}_h^b} \left( \kappa e v - D v \delta_n e - D e \delta_n v \right) = \int_{\mathbb{T}_h} (\phi^{\ell + 1} - \phi^\ell) v\,,
+	\end{multline}
+	where
+	\[
+		\{\!\!\{ u \}\!\!\} \equiv \frac{u^+ + u^-}{2} \quad \text{and} \quad \llbracket u \rrbracket \equiv u^+ - u^-\,,
+	\]
+	in which the penalty coefficient is
+	\[
+		\kappa = \begin{cases} 2 \left(\frac{D^+}{h^+_\bot} + \frac{D^-}{h^-_\bot}\right) & \text{for~interior~edges}\,, \\ 8 \frac{D^-}{h^-_\bot} & \text{for~boundary~edges}\,, \end{cases}
+	\]
+	and $h^\pm_\bot$ is a characteristic length of the cell in the direction orthogonal to the edge.
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}\frametitle{Diffusion Acceleration Results}
+	Consider $\spatial = [0, 10]^2$, $N_\Omega = 20$, $q = 1$, $\sigma_a + \sigma_s = \sigma_t = 100$, and $16^2$ elements. Increase the scattering ratio, $\sigma_s / \sigma_t$ with and without diffusion acceleration and observe the results:
+	\vfill
+	\includegraphics[width=0.95\linewidth]{plots/dsa_residuals}
+	\vfill
+\end{frame}
 \end{document}
