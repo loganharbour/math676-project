@@ -83,6 +83,20 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+\begin{frame}\frametitle{Introduction}
+	\begin{block}{}
+		\begin{itemize}
+			\item My Ph.D. work involves various acceleration techniques for method of characteristics (MOC) radiation transport
+			\item As an introduction to previous methods, the push for this work is to investigate previously-developed acceleration techniques for S$_N$ radiation transport (as an introduction to my future works)
+			\item With this, the first goal was to develop a simple S$_N$ radiation transport code to be accelerated
+			\item The second goal was then to utilize a common diffusion-acceleration technique to accelerate said S$_N$ code
+			\item Additional goals were added as I was able to complete the first two goals early
+		\end{itemize}
+	\end{block}
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 \begin{frame}\frametitle{One-group Linear Boltzmann Equation}
 	Start with the one-group S$_N$ transport equation for a single direction $d$ (neglecting boundary conditions for simplicity), as
 	\begin{equation}
@@ -148,9 +162,31 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}\frametitle{Diffusion Acceleration Results}
-	Consider $\spatial = [0, 10]^2$, $N_\Omega = 20$, $q = 1$, $\sigma_a + \sigma_s = \sigma_t = 100$, and $16^2$ elements. Increase the scattering ratio, $\sigma_s / \sigma_t$ with and without diffusion acceleration and observe the results:
+	Consider $\spatial = [0, 10]^2$, $N_\Omega = 20$, $q = 1$, $\sigma_a + \sigma_s = \sigma_t = 100$, and $16^2$ elements. Increase the scattering ratio, $c = \sigma_s / \sigma_t$, with and without diffusion acceleration and observe the results:
 	\vfill
 	\includegraphics[width=0.95\linewidth]{plots/dsa_residuals}
 	\vfill
 \end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}\frametitle{Additional Goals Completed}
+	The primarily implementation (transport with diffusion acceleration) was completed earlier than expected. Therefore, additional goals were added (and completed!) to round out the project:
+	\vfill
+	\begin{block}{Parallel support}
+		\begin{itemize}
+			\item Supports parallel solves using MPI and Trillinos wrappers, completed primarily by following step-40
+			\item Transport is solved with GMRES and the AMG preconditioner
+			\item Diffusion is solved with CG and the AMG preconditioner
+		\end{itemize}
+	\end{block}
+	\vfill
+	\begin{block}{Reflecting boundary conditions}
+		\begin{itemize}
+			\item Reflecting boundaries require storing the outgoing flux on the boundaries and then reflecting on the incoming boundaries (bit of a pain, but it works)
+			\item Also supported in the diffusion acceleration scheme through adding an additional source term for boundary flux error
+		\end{itemize}
+	\end{block}
+\end{frame}
+
 \end{document}
