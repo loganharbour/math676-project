@@ -1,5 +1,6 @@
 #include "dsaproblem.h"
 
+#include "angular_quadrature.h"
 #include "description.h"
 #include "discretization.h"
 #include "problem.h"
@@ -22,9 +23,12 @@ DSAProblem<dim>::DSAProblem(Problem<dim> & problem)
     description(problem.get_description()),
     discretization(problem.get_discretization()),
     dof_handler(discretization.get_dof_handler()),
+    aq(discretization.get_aq()),
     scalar_flux(problem.get_scalar_flux()),
     scalar_flux_old(problem.get_scalar_flux_old()),
-    reflected_flux_integral(problem.get_reflected_flux_integral()),
+    reflective_dof_normals(problem.get_reflective_dof_normals()),
+    reflective_incoming_flux(problem.get_reflective_incoming_flux()),
+    reflective_dJ(problem.get_reflective_dJ()),
     system_matrix(problem.get_system_matrix()),
     system_rhs(problem.get_system_rhs()),
     system_solution(problem.get_system_solution())
@@ -77,6 +81,23 @@ DSAProblem<dim>::solve()
 
   // Update scalar flux with change
   scalar_flux += system_solution;
+
+  // Update incoming angular fluxes on reflecting boundaries with change
+  if (description.has_reflecting_bcs())
+  {
+    for (unsigned int d = 0; d < aq.n_dir(); ++d)
+    {
+      const auto dir = aq.dir(d);
+      for (auto & dof_value_pair : reflective_incoming_flux[d])
+      {
+        const unsigned int dof = dof_value_pair.first;
+        double & value = dof_value_pair.second;
+        const double omega_dot_n = dir * get_hat_direction<dim>(reflective_dof_normals.at(dof));
+        value += system_solution[dof] - reflective_dJ.at(dof) * omega_dot_n;
+      }
+    }
+  }
+
 }
 
 template <int dim>
@@ -201,9 +222,9 @@ DSAProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
   for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
     if (fe.has_support_on_face(i, dinfo.face_number))
     {
-      const double dJ_i = reflected_flux_integral.at(dinfo.indices[i]);
+      const double dJ_i = reflective_dJ.at(dinfo.indices[i]);
       for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
-        local_vector(i) -= fe_v.shape_value(i, q) * JxW[q] * dJ_i;
+        local_vector(i) += fe_v.shape_value(i, q) * JxW[q] * dJ_i;
     }
 }
 

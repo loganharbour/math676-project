@@ -18,8 +18,6 @@ using namespace dealii;
 
 // Forward declarations
 template <int dim>
-class AngularQuadrature;
-template <int dim>
 class Description;
 template <int dim>
 class Discretization;
@@ -61,8 +59,8 @@ private:
 
   /// Compute the L2 difference of the scalar flux on the reflective boundary
   double scalar_flux_reflective_L2() const;
-  /// Update the reflected flux integral
-  void update_reflected_flux_integral(const unsigned int d, const bool incoming);
+  /// Updates for reflective bcs before and after a single angular sweep
+  void update_for_reflective_bc(const unsigned int d, const bool before_sweep);
 
   /// MPI communicator
   MPI_Comm & comm;
@@ -77,7 +75,7 @@ private:
   /// Access to the dof_handler in the Description
   const DoFHandler<dim> & dof_handler;
   /// Access to the angular quadrature
-  AngularQuadrature<dim> & aq;
+  const AngularQuadrature<dim> & aq;
 
   /// Access the scalar flux DGFEM solution in the Problem
   LA::MPI::Vector & scalar_flux;
@@ -85,15 +83,16 @@ private:
   LA::MPI::Vector & scalar_flux_old;
 
   /// The unit normal for each reflective boundary
-  std::map<types::global_dof_index, HatDirection> reflective_dof_normals;
+  std::map<types::global_dof_index, HatDirection> & reflective_dof_normals;
+  /// Incoming angular flux on the reflective boundaries
+  std::vector<std::map<types::global_dof_index, double>> & reflective_incoming_flux;
+  /// Net current on the reflective boundaries (for DSA)
+  std::map<types::global_dof_index, double> & reflective_dJ;
+
   /// Scalar flux on the reflective boundary (used for checking convergence)
   std::map<types::global_dof_index, double> reflective_scalar_flux;
   /// Old scalar flux on the reflective boundary (used for checking convergence)
   std::map<types::global_dof_index, double> reflective_scalar_flux_old;
-  /// Outgoing angular flux on the reflective boundaries
-  std::vector<std::map<types::global_dof_index, double>> reflective_outgoing_flux;
-  /// Angular integration of the angular flux on the reflective boundaries (for DSA)
-  std::map<types::global_dof_index, double> & reflected_flux_integral;
 
   /// System storage owned by the Problem
   LA::MPI::SparseMatrix & system_matrix;

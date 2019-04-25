@@ -136,51 +136,50 @@ public:
         }
       }
     }
-  }
 
-  void init_reflected_directions(const std::set<HatDirection> & reflective_normals)
-  {
-    // Fill for each normal that is in reflective_normals
-    for (const HatDirection hat : reflective_normals)
+    // Initialize reflected directions (dim * 2 possible reflective normals)
+    reflect_to_vector.resize(dim * 2);
+    for (unsigned int hat_i = 0; hat_i < dim * 2; ++hat_i)
     {
       // This normal direction
-      const Tensor<1, dim> normal = get_hat_direction<dim>(hat);
+      const HatDirection hat = (HatDirection)hat_i;
+      const Tensor<1, dim> normal = get_hat_direction<dim>((HatDirection)hat_i);
 
       // Check every outgoing direction to store what direction it goes into
-      for (unsigned int d = 0; d < n_directions; ++d)
+      for (unsigned int d_from = 0; d_from < n_directions; ++d_from)
       {
         // Direction is not outgoing
-        if (directions[d] * normal < 0)
+        if (directions[d_from] * normal < 0)
           continue;
 
         // The direction that this direction reflects into
-        const Tensor<1, dim> dir_ref = directions[d] - 2 * (directions[d] * normal) * normal;
+        const Tensor<1, dim> dir_ref = directions[d_from] - 2 * (directions[d_from] * normal) * normal;
 
         // Find the direction in the quadrature set most similar to dir_ref
-        unsigned int d_ref;
+        unsigned int d_to;
         double norm_min = std::numeric_limits<double>::max();
         for (unsigned int dp = 0; dp < n_directions; ++dp)
         {
           double norm = (directions[dp] - dir_ref).norm();
           if (norm < norm_min)
           {
-            d_ref = dp;
+            d_to = dp;
             norm_min = norm;
           }
         }
 
-        // Store for the direction dp that direction d reflects into it on this normal
-        reflect_from_map[hat][d_ref].insert(d);
+        // Store
+        reflect_to_vector[hat].emplace(d_from, d_to);
       }
     }
   }
 
-  // Get the directions that reflect into direction d_to on the surface defined by normal
-  const std::set<unsigned int> & reflect_from(const Tensor<1, dim> & normal,
-                                              const unsigned int d_to) const
+  // Get the direction that direction d_from reflects into on the surface defined by normal
+  unsigned int reflect_to(const HatDirection hat, const unsigned int d_from) const
   {
-    return reflect_from_map.at(get_hat_direction<dim>(normal)).at(d_to);
+    return reflect_to_vector[hat].at(d_from);
   }
+
 
   unsigned int n_dir() const { return n_directions; }
   Tensor<1, dim> dir(const unsigned int d) const { return directions[d]; }
@@ -196,8 +195,8 @@ private:
   /// Angular quadrature directions
   std::vector<Tensor<1, dim>> directions;
 
-  /// Reflected directions
-  std::map<HatDirection, std::map<unsigned int, std::set<unsigned int>>> reflect_from_map;
+  /// Reflected directions, sorted by the normal directions
+  std::vector<std::map<unsigned int, unsigned int>> reflect_to_vector;
 
   /// Angular quadrature weights
   std::vector<double> weights;

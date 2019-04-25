@@ -38,9 +38,22 @@ public:
   LA::MPI::SparseMatrix & get_system_matrix() { return system_matrix; }
   LA::MPI::Vector & get_system_rhs() { return system_rhs; }
   LA::MPI::Vector & get_system_solution() { return system_solution; }
-  std::map<types::global_dof_index, double> & get_reflected_flux_integral()
+  const std::map<types::global_dof_index, double> & get_reflective_dJ() const
   {
-    return reflected_flux_integral;
+    return reflective_dJ;
+  }
+  std::map<types::global_dof_index, double> & get_reflective_dJ() { return reflective_dJ; }
+  std::map<types::global_dof_index, HatDirection> & get_reflective_dof_normals()
+  {
+    return reflective_dof_normals;
+  };
+  const std::map<types::global_dof_index, HatDirection> & get_reflective_dof_normals() const
+  {
+    return reflective_dof_normals;
+  };
+  std::vector<std::map<types::global_dof_index, double>> & get_reflective_incoming_flux()
+  {
+    return reflective_incoming_flux;
   }
 
   ConditionalOStream & get_pcout() { return pcout; }
@@ -75,6 +88,8 @@ private:
   Description<dim> description;
   /// Problem discretization that holds the dof_handler and triangulation
   Discretization<dim> discretization;
+  /// Access to the angular quadrature
+  const AngularQuadrature<dim> & aq;
   /// The SNProblem, which computes the SN quantities
   SNProblem<dim> sn;
   /// The DSAProblem, which accelerates the source iteration
@@ -88,8 +103,12 @@ private:
   /// Finite element representation of the scalar flux at the previous iteration
   LA::MPI::Vector scalar_flux_old;
 
-  /// Angular integration of the angular flux on the reflective boundaries (for DSA)
-  std::map<types::global_dof_index, double> reflected_flux_integral;
+  /// The unit normal for each reflective boundary
+  std::map<types::global_dof_index, HatDirection> reflective_dof_normals;
+  /// Incoming angular flux on the reflective boundaries
+  std::vector<std::map<types::global_dof_index, double>> reflective_incoming_flux;
+  /// Net current on the reflective boundaries (for DSA)
+  std::map<types::global_dof_index, double> reflective_dJ;
 
   /// System storage
   LA::MPI::SparseMatrix system_matrix;

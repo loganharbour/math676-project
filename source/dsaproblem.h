@@ -1,6 +1,8 @@
 #ifndef DSA_PROBLEM
 #define DSA_PROBLEM
 
+#include "angular_quadrature.h"
+
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/parameter_acceptor.h>
 #include <deal.II/lac/generic_linear_algebra.h>
@@ -72,14 +74,20 @@ private:
 
   /// Access to the dof_handler in the Description
   const DoFHandler<dim> & dof_handler;
+  /// Access to the angular quadrature
+  const AngularQuadrature<dim> & aq;
 
   /// Access the scalar flux DGFEM solution in the Problem
   LA::MPI::Vector & scalar_flux;
   /// Access the old scalar flux DGFEM solution in the Problem
   const LA::MPI::Vector & scalar_flux_old;
 
-  /// Angular integration of the angular flux on the reflective boundaries (for DSA)
-  std::map<types::global_dof_index, double> & reflected_flux_integral;
+  /// The unit normal for each reflective boundary
+  const std::map<types::global_dof_index, HatDirection> & reflective_dof_normals;
+  /// Incoming angular flux on the reflective boundaries
+  std::vector<std::map<types::global_dof_index, double>> & reflective_incoming_flux;
+  /// Net current on the reflective boundaries (for DSA)
+  const std::map<types::global_dof_index, double> & reflective_dJ;
 
   /// System storage owned by the Problem
   LA::MPI::SparseMatrix & system_matrix;

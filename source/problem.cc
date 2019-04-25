@@ -12,6 +12,7 @@ Problem<dim>::Problem()
     comm(MPI_COMM_WORLD),
     pcout(std::cout, (Utilities::MPI::this_mpi_process(comm) == 0)),
     discretization(comm),
+    aq(discretization.get_aq()),
     sn(*this),
     dsa(*this),
     dof_handler(discretization.get_dof_handler())
@@ -63,6 +64,55 @@ Problem<dim>::setup()
   // Resize scalar flux variables
   scalar_flux.reinit(discretization.get_locally_owned_dofs(), comm);
   scalar_flux_old.reinit(discretization.get_locally_owned_dofs(), comm);
+
+  // Allocate storage for reflecting boundaries
+  if (description.has_reflecting_bcs())
+  {
+    reflective_incoming_flux.resize(aq.n_dir());
+
+    QGauss<dim - 1> quadrature(1);
+    FEFaceValues<dim> fe(dof_handler.get_fe(), quadrature, update_normal_vectors);
+    std::vector<types::global_dof_index> dofs(fe.dofs_per_cell);
+    std::vector<types::global_dof_index> face_dofs(GeometryInfo<dim>::vertices_per_face);
+    for (const auto & cell : dof_handler.active_cell_iterators())
+    {
+      // Skip non-local and non-boundary cells
+      if (!cell->is_locally_owned() || !cell->at_boundary())
+        continue;
+
+      // Check each face
+      for (unsigned int f = 0; f < GeometryInfo<dim>::faces_per_cell; ++f)
+      {
+        // Skip non-boundary faces and non-reflective faces
+        const auto & face = cell->face(f);
+        if (!face->at_boundary() ||
+            description.get_bc(face->boundary_id()).type != BCTypes::Reflective)
+          continue;
+
+        // Outward-facing unit normal for this face
+        fe.reinit(cell, f);
+        const Tensor<1, dim> normal = fe.normal_vector(0);
+        const HatDirection normal_hat = get_hat_direction<dim>(normal);
+
+        // Dofs for this face
+        cell->get_dof_indices(dofs);
+        for (unsigned int fv = 0; fv < face_dofs.size(); ++fv)
+          face_dofs[fv] = dofs[GeometryInfo<dim>::face_to_cell_vertices(f, fv)];
+
+        for (const types::global_dof_index dof : face_dofs)
+        {
+          // Initialize storage for the net current on reflective boundaries (for DSA)
+          reflective_dJ.emplace(dof, 0);
+          // Store this normal for computation of the reflected flux integral later
+          reflective_dof_normals.emplace(dof, normal_hat);
+          // Initialize storage for angular fluxes on incoming reflective boundaries
+          for (unsigned int d = 0; d < aq.n_dir(); ++d)
+            if (aq.dir(d) * normal < 0)
+              reflective_incoming_flux[d].emplace(dof, 0);
+        } // dofs on a face
+      }   // faces
+    }     // cells
+  }       // has reflecting bcs
 
   // Setup the problems
   sn.setup();
