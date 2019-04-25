@@ -18,8 +18,6 @@ Description<dim>::Description() : ParameterAcceptor("Description")
   add_parameter("material_src", material_src);
 
   // Add boundary parameters
-  add_parameter("perpendicular_boundary_ids", perpendicular_boundary_ids);
-  add_parameter("perpendicular_boundary_fluxes", perpendicular_boundary_fluxes);
   add_parameter("isotropic_boundary_ids", isotropic_boundary_ids);
   add_parameter("isotropic_boundary_fluxes", isotropic_boundary_fluxes);
   add_parameter("reflective_boundary_ids", reflective_boundary_ids);
@@ -69,7 +67,6 @@ template <int dim>
 void
 Description<dim>::setup_bcs(const std::set<unsigned int> & mesh_boundary_ids)
 {
-  fill_bcs(BCTypes::Perpendicular, perpendicular_boundary_ids, &perpendicular_boundary_fluxes);
   fill_bcs(BCTypes::Isotropic, isotropic_boundary_ids, &isotropic_boundary_fluxes);
   fill_bcs(BCTypes::Reflective, reflective_boundary_ids);
   fill_bcs(BCTypes::Vacuum, vacuum_boundary_ids);

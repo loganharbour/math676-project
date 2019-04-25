@@ -104,9 +104,6 @@ private:
 
   // Input vacuum boundary ids
   std::vector<unsigned int> vacuum_boundary_ids = {};
-  // Input perpendicular incident flux boundary conditions
-  std::vector<unsigned int> perpendicular_boundary_ids = {};
-  std::vector<double> perpendicular_boundary_fluxes = {};
   // Input isotropic incident flux boundary conditions
   std::vector<unsigned int> isotropic_boundary_ids = {};
   std::vector<double> isotropic_boundary_fluxes = {};
