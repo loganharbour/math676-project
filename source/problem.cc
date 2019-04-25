@@ -11,7 +11,8 @@ Problem<dim>::Problem()
   : ParameterAcceptor("Problem"),
     comm(MPI_COMM_WORLD),
     pcout(std::cout, (Utilities::MPI::this_mpi_process(comm) == 0)),
-    discretization(comm),
+    timer(pcout, TimerOutput::summary, TimerOutput::cpu_and_wall_times),
+    discretization(comm, timer),
     aq(discretization.get_aq()),
     sn(*this),
     dsa(*this),
@@ -52,6 +53,8 @@ Problem<dim>::setup()
 
   // Setup description (needs discretization for bc/material coverage)
   description.setup(discretization);
+
+  TimerOutput::Scope t(timer, "Problem setup");
 
   // Resize system variable
   system_rhs.reinit(discretization.get_locally_owned_dofs(), comm);
@@ -128,14 +131,14 @@ Problem<dim>::solve()
     pcout << "Source iteration " << l << std::endl;
 
     // Solve all directions with SN
-    sn.solve_directions();
+    sn.assemble_and_solve();
 
     // Do not iterate without scattering
     if (!description.has_scattering())
       return;
 
     // Solve for DSA scalar flux correction
-    dsa.solve();
+    dsa.assemble_and_solve();
 
     // Compute L2 norm of (scalar_flux - scalar_flux_old) and store
     const double norm = scalar_flux_L2();
@@ -184,8 +187,10 @@ Problem<dim>::scalar_flux_L2() const
 
 template <int dim>
 void
-Problem<dim>::output_vtu() const
+Problem<dim>::output_vtu()
 {
+  TimerOutput::Scope t(timer, "Problem output");
+
   const auto & triangulation = discretization.get_triangulation();
 
   // DataOut setup

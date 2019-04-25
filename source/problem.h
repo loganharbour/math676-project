@@ -8,6 +8,7 @@
 
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/parameter_acceptor.h>
+#include <deal.II/base/timer.h>
 #include <deal.II/lac/generic_linear_algebra.h>
 
 #include <fstream>
@@ -27,6 +28,7 @@ public:
   void run();
 
   MPI_Comm & get_comm() { return comm; }
+  TimerOutput & get_timer() { return timer; }
   const Description<dim> & get_description() const { return description; }
   Discretization<dim> & get_discretization() { return discretization; }
   const Discretization<dim> & get_discretization() const { return discretization; }
@@ -77,12 +79,14 @@ private:
   /// Compute the L2 norm of (scalar_flux - scalar_flux_old) for checking convergence
   double scalar_flux_L2() const;
   /// Build and save .vtu output
-  void output_vtu() const;
+  void output_vtu();
 
   /// MPI communicator
   MPI_Comm comm;
   /// Parallel cout
   ConditionalOStream pcout;
+  /// Timer
+  TimerOutput timer;
 
   /// Problem description that holds material properties, boundary conditions, etc
   Description<dim> description;

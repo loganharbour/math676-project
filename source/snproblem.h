@@ -5,6 +5,7 @@
 
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/parameter_acceptor.h>
+#include <deal.II/base/timer.h>
 #include <deal.II/lac/generic_linear_algebra.h>
 #include <deal.II/meshworker/loop.h>
 #include <deal.II/meshworker/simple.h>
@@ -34,14 +35,15 @@ public:
   void setup();
 
   /// Solve all directions
-  void solve_directions();
+  void assemble_and_solve();
 
 private:
   /// Solve and fill scalar flux for angular direction d
-  void solve_direction(const unsigned int d);
+  void assemble_and_solve(const unsigned int d);
+  void solve(const unsigned int d);
 
   /// Assemble LHS and RHS for angular direction d
-  void assemble_direction(const unsigned int d);
+  void assemble(const unsigned int d);
   /// Cell integration term for MeshWorker
   void integrate_cell(MeshWorker::DoFInfo<dim> & dinfo,
                       MeshWorker::IntegrationInfo<dim> & info,
@@ -66,6 +68,8 @@ private:
   MPI_Comm & comm;
   /// Parallel cout
   ConditionalOStream pcout;
+  /// Timer
+  TimerOutput & timer;
 
   /// Access to the description in the Problem
   const Description<dim> & description;

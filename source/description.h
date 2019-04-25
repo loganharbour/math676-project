@@ -2,6 +2,7 @@
 #define DESCRIPTION_H
 
 #include <deal.II/base/parameter_acceptor.h>
+#include <deal.II/base/timer.h>
 
 #include <map>
 

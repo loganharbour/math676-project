@@ -5,6 +5,7 @@
 
 #include <deal.II/base/parameter_acceptor.h>
 #include <deal.II/base/index_set.h>
+#include <deal.II/base/timer.h>
 #include <deal.II/distributed/tria.h>
 #include <deal.II/dofs/dof_handler.h>
 #include <deal.II/fe/fe_dgq.h>
@@ -19,7 +20,7 @@ template <int dim>
 class Discretization : public ParameterAcceptor
 {
 public:
-  Discretization(MPI_Comm & comm);
+  Discretization(MPI_Comm & comm, TimerOutput & timer);
 
   void renumber_dofs(const unsigned int h);
   void setup();
@@ -42,6 +43,8 @@ private:
 
   /// MPI communicator
   MPI_Comm & comm;
+  /// Timer
+  TimerOutput & timer;
 
   parallel::distributed::Triangulation<dim> triangulation;
   const MappingQ1<dim> mapping;

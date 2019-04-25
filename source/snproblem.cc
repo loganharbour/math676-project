@@ -20,6 +20,7 @@ SNProblem<dim>::SNProblem(Problem<dim> & problem)
   : ParameterAcceptor("SNProblem"),
     comm(problem.get_comm()),
     pcout(problem.get_pcout()),
+    timer(problem.get_timer()),
     description(problem.get_description()),
     discretization(problem.get_discretization()),
     dof_handler(discretization.get_dof_handler()),
@@ -41,6 +42,8 @@ template <int dim>
 void
 SNProblem<dim>::setup()
 {
+  TimerOutput::Scope t(timer, "SNProblem setup");
+
   // Setup InfoBox for MeshWorker
   info_box.initialize_update_flags();
   UpdateFlags update_flags = update_JxW_values | update_values | update_gradients;
@@ -61,7 +64,7 @@ SNProblem<dim>::setup()
 
 template <int dim>
 void
-SNProblem<dim>::solve_directions()
+SNProblem<dim>::assemble_and_solve()
 {
   // Copy to old scalar flux
   scalar_flux_old = scalar_flux;
@@ -84,7 +87,7 @@ SNProblem<dim>::solve_directions()
 
     // Solve each direction
     for (unsigned int d = 0; d < aq.n_dir(); ++d)
-      solve_direction(d);
+      assemble_and_solve(d);
 
     if (description.has_reflecting_bcs())
     {
@@ -109,25 +112,17 @@ SNProblem<dim>::solve_directions()
 
 template <int dim>
 void
-SNProblem<dim>::solve_direction(const unsigned int d)
+SNProblem<dim>::assemble_and_solve(const unsigned int d)
 {
   // Updates for reflecting bcs before sweep (incoming current on reflective boundaries)
   if (description.has_reflecting_bcs())
     update_for_reflective_bc(d, true);
 
   // Assemble the system
-  assemble_direction(d);
+  assemble(d);
 
-  system_solution = 0;
-
-  SolverControl solver_control(1000, 1e-12);
-  TrilinosWrappers::SolverGMRES solver(solver_control);
-  LA::MPI::PreconditionAMG preconditioner;
-  preconditioner.initialize(system_matrix);
-  solver.solve(system_matrix, system_solution, system_rhs, preconditioner);
-
-  pcout << "  Direction " << d << " converged after " << solver_control.last_step()
-        << " GMRES iterations " << std::endl;
+  // And solve
+  solve(d);
 
   // Updates for reflecting bcs after sweep (outgoing current on reflective boundaries
   // and update incoming angular fluxes)
@@ -141,8 +136,26 @@ SNProblem<dim>::solve_direction(const unsigned int d)
 
 template <int dim>
 void
-SNProblem<dim>::assemble_direction(const unsigned int d)
+SNProblem<dim>::solve(const unsigned int d)
 {
+  TimerOutput::Scope t(timer, "SNProblem solve");
+  system_solution = 0;
+  SolverControl solver_control(1000, 1e-12);
+  TrilinosWrappers::SolverGMRES solver(solver_control);
+  LA::MPI::PreconditionAMG preconditioner;
+  preconditioner.initialize(system_matrix);
+  solver.solve(system_matrix, system_solution, system_rhs, preconditioner);
+
+  pcout << "  Direction " << d << " converged after " << solver_control.last_step()
+        << " GMRES iterations " << std::endl;
+}
+
+template <int dim>
+void
+SNProblem<dim>::assemble(const unsigned int d)
+{
+  TimerOutput::Scope t(timer, "SNProblem assembly");
+
   // Zero lhs and rhs before assembly
   system_matrix = 0;
   system_rhs = 0;
@@ -350,6 +363,8 @@ template <int dim>
 void
 SNProblem<dim>::update_for_reflective_bc(const unsigned int d, const bool before_sweep)
 {
+  TimerOutput::Scope t(timer, "SNProblem reflective BC update");
+
   // Loop over each reflective dof and its corresponding outward normal
   for (const auto & dof_normal_pair : reflective_dof_normals)
   {
@@ -422,7 +437,7 @@ template SNProblem<3>::SNProblem(Problem<3> & problem);
 template void SNProblem<2>::setup();
 template void SNProblem<3>::setup();
 
-template void SNProblem<2>::solve_directions();
-template void SNProblem<3>::solve_directions();
+template void SNProblem<2>::assemble_and_solve();
+template void SNProblem<3>::assemble_and_solve();
 
 } // namespace RadProblem

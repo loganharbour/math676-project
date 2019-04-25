@@ -5,6 +5,7 @@
 
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/parameter_acceptor.h>
+#include <deal.II/base/timer.h>
 #include <deal.II/lac/generic_linear_algebra.h>
 #include <deal.II/meshworker/loop.h>
 #include <deal.II/meshworker/simple.h>
@@ -33,7 +34,7 @@ public:
   /// Initial setup for the DSAProblem
   void setup();
   // Solve the DSAProblem
-  void solve();
+  void assemble_and_solve();
 
   /// Whether or not DSA is enabled
   bool is_enabled() const { return enabled; }
@@ -53,6 +54,8 @@ private:
                               MeshWorker::IntegrationInfo<dim> & info1,
                               MeshWorker::IntegrationInfo<dim> & info2) const;
 
+  /// Solve the system
+  void solve();
   /// Assemble the components of the LHS and RHS that change with each iteration
   void assemble();
   /// Cell integration term for MeshWorker
@@ -66,6 +69,8 @@ private:
   MPI_Comm & comm;
   /// Parallel cout
   ConditionalOStream pcout;
+  /// Timer
+  TimerOutput & timer;
 
   /// Access to the description in the Problem
   const Description<dim> & description;

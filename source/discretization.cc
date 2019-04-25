@@ -10,9 +10,10 @@ namespace RadProblem
 using namespace dealii;
 
 template <int dim>
-Discretization<dim>::Discretization(MPI_Comm & comm)
+Discretization<dim>::Discretization(MPI_Comm & comm, TimerOutput & timer)
   : ParameterAcceptor("Discretization"),
     comm(comm),
+    timer(timer),
     triangulation(comm),
     mapping(),
     fe(1),
@@ -32,6 +33,8 @@ template <int dim>
 void
 Discretization<dim>::setup()
 {
+  TimerOutput::Scope t(timer, "Discretization setup");
+
   // Generate the mesh depending on user inputs
   generate_mesh();
 
@@ -90,8 +93,8 @@ Discretization<dim>::generate_mesh()
   material_ids = {0};
 }
 
-template Discretization<2>::Discretization(MPI_Comm & comm);
-template Discretization<3>::Discretization(MPI_Comm & comm);
+template Discretization<2>::Discretization(MPI_Comm & comm, TimerOutput & timer);
+template Discretization<3>::Discretization(MPI_Comm & comm, TimerOutput & timer);
 
 template void Discretization<2>::setup();
 template void Discretization<3>::setup();

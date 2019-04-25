@@ -20,6 +20,7 @@ DSAProblem<dim>::DSAProblem(Problem<dim> & problem)
   : ParameterAcceptor("DSAProblem"),
     comm(problem.get_comm()),
     pcout(problem.get_pcout()),
+    timer(problem.get_timer()),
     description(problem.get_description()),
     discretization(problem.get_discretization()),
     dof_handler(discretization.get_dof_handler()),
@@ -44,6 +45,7 @@ template <int dim>
 void
 DSAProblem<dim>::setup()
 {
+  TimerOutput::Scope t(timer, "DSAProblem setup");
   // Do not setup without scattering or if it is disabled
   if (!description.has_scattering() || !enabled)
     return;
@@ -60,24 +62,14 @@ DSAProblem<dim>::setup()
 
 template <int dim>
 void
-DSAProblem<dim>::solve()
+DSAProblem<dim>::assemble_and_solve()
 {
   // Skip if disabled
   if (!enabled)
     return;
 
-  // Assembly
   assemble();
-
-  // Solve system
-  system_solution = 0;
-  SolverControl control(1000, 1e-12);
-  LA::SolverCG solver(control);
-  LA::MPI::PreconditionAMG preconditioner;
-  LA::MPI::PreconditionAMG::AdditionalData data;
-  preconditioner.initialize(system_matrix);
-  solver.solve(system_matrix, system_solution, system_rhs, preconditioner);
-  pcout << "  DSA converged after " << control.last_step() << " CG iterations" << std::endl;
+  solve();
 
   // Update scalar flux with change
   scalar_flux += system_solution;
@@ -97,8 +89,24 @@ DSAProblem<dim>::solve()
       }
     }
   }
-
 }
+
+template <int dim>
+void
+DSAProblem<dim>::solve()
+{
+  // Solve system
+  TimerOutput::Scope t1(timer, "DSAProblem solve");
+  system_solution = 0;
+  SolverControl control(1000, 1e-12);
+  LA::SolverCG solver(control);
+  LA::MPI::PreconditionAMG preconditioner;
+  LA::MPI::PreconditionAMG::AdditionalData data;
+  preconditioner.initialize(system_matrix);
+  solver.solve(system_matrix, system_solution, system_rhs, preconditioner);
+  pcout << "  DSA converged after " << control.last_step() << " CG iterations" << std::endl;
+}
+
 
 template <int dim>
 void
@@ -148,6 +156,8 @@ template <int dim>
 void
 DSAProblem<dim>::assemble()
 {
+  TimerOutput::Scope t(timer, "DSAProblem assembly");
+
   UpdateFlags update_flags = update_values | update_JxW_values;
   MeshWorker::IntegrationInfoBox<dim> info_box;
   info_box.add_update_flags_cell(update_flags);
@@ -335,7 +345,7 @@ template DSAProblem<3>::DSAProblem(Problem<3> & problem);
 template void DSAProblem<2>::setup();
 template void DSAProblem<3>::setup();
 
-template void DSAProblem<2>::solve();
-template void DSAProblem<3>::solve();
+template void DSAProblem<2>::assemble_and_solve();
+template void DSAProblem<3>::assemble_and_solve();
 
 } // namespace RadProblem
