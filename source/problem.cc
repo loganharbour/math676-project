@@ -222,8 +222,10 @@ Problem<dim>::solve()
 
 template <int dim>
 double
-Problem<dim>::scalar_flux_L2() const
+Problem<dim>::scalar_flux_L2()
 {
+  TimerOutput::Scope t(timer, "Problem scalar flux L2 norm");
+
   double value = 0;
 
   const auto & fe = dof_handler.get_fe();
@@ -252,8 +254,10 @@ Problem<dim>::scalar_flux_L2() const
 
 template <int dim>
 double
-Problem<dim>::reflective_dJ_L2() const
+Problem<dim>::reflective_dJ_L2()
 {
+  TimerOutput::Scope t(timer, "Problem reflective dJ L2 norm");
+
   const auto & fe = dof_handler.get_fe();
   QGauss<dim - 1> quadrature(fe.degree + 1);
   FEFaceValues<dim> fe_v(fe, quadrature, update_values | update_JxW_values);

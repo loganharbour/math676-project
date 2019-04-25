@@ -77,9 +77,9 @@ private:
   void solve();
 
   /// Compute the L2 norm of (scalar_flux - scalar_flux_old) for checking convergence
-  double scalar_flux_L2() const;
+  double scalar_flux_L2();
   /// Compute the L2 norm of reflective_dJ for checking convergence
-  double reflective_dJ_L2() const;
+  double reflective_dJ_L2();
   /// Build and save .vtu output
   void output_vtu();
 
