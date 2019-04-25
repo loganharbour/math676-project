@@ -67,6 +67,7 @@ DSAProblem<dim>::assemble_solve_update()
   // Update incoming angular fluxes on reflecting boundaries with change
   if (description.has_reflecting_bcs())
   {
+    TimerOutput::Scope t(timer, "DSAProblem reflective BC update");
     for (unsigned int d = 0; d < aq.n_dir(); ++d)
     {
       const auto dir = aq.dir(d);
