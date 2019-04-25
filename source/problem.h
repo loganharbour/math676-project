@@ -78,6 +78,8 @@ private:
 
   /// Compute the L2 norm of (scalar_flux - scalar_flux_old) for checking convergence
   double scalar_flux_L2() const;
+  /// Compute the L2 norm of reflective_dJ for checking convergence
+  double reflective_dJ_L2() const;
   /// Build and save .vtu output
   void output_vtu();
 
@@ -111,7 +113,7 @@ private:
   std::map<types::global_dof_index, HatDirection> reflective_dof_normals;
   /// Incoming angular flux on the reflective boundaries
   std::vector<std::map<types::global_dof_index, double>> reflective_incoming_flux;
-  /// Net current on the reflective boundaries (for DSA)
+  /// Net current on the reflective boundaries
   std::map<types::global_dof_index, double> reflective_dJ;
 
   /// System storage
@@ -126,10 +128,19 @@ private:
   std::string vtu_filename = "output";
   /// Residual output filename
   std::string residual_filename = "";
+
   /// Maximum source iterations
-  unsigned int max_its = 1000;
+  unsigned int max_source_its = 1000;
   /// Source iteration tolerance
   double source_iteration_tol = 1.0e-12;
+
+  /// Maximum reflective boundary iterations
+  unsigned int max_ref_its = 1;
+  /// Reflective boundary iteration tolerance
+  double reflective_iteration_tol = 1.0e-12;
+
+  /// Enable DSA
+  bool enable_dsa = true;
 };
 } // namespace RadProblem
 

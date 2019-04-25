@@ -24,9 +24,17 @@ Problem<dim>::Problem()
   add_parameter("residual_filename", residual_filename);
 
   // Maximum source iterations (default: 1000)
-  add_parameter("max_source_iterations", max_its);
+  add_parameter("max_source_iterations", max_source_its);
   // Source iteration tolerance (defaut: 1e-12)
   add_parameter("source_iteration_tolerance", source_iteration_tol);
+
+  // Maximum source iterations (default: 1)
+  add_parameter("max_reflective_iterations", max_ref_its);
+  // Source iteration tolerance (defaut: 1e-12)
+  add_parameter("reflective_iteration_tolerance", reflective_iteration_tol);
+
+  // Enable DSA (default: true)
+  add_parameter("dsa", enable_dsa);
 }
 
 template <int dim>
@@ -68,6 +76,20 @@ Problem<dim>::setup()
   scalar_flux.reinit(discretization.get_locally_owned_dofs(), comm);
   scalar_flux_old.reinit(discretization.get_locally_owned_dofs(), comm);
 
+  // If we do not have scattering and we have reflective BCs, make sure that the
+  // reflective BC iterations is not 1 otherwise it will not converge
+  if (!description.has_scattering() && description.has_reflecting_bcs() && max_ref_its == 1)
+  {
+    pcout << "\nProblem max_ref_its is set to 1, but there is no scattering and therefore\n"
+          << "the reflective boundary conditions will likely not converge It is being set\n"
+          << "by default to 10. Set it greater than 1 to escape this warning.\n\n";
+    max_ref_its = 10;
+  }
+
+  // Reflective BC iterations needs to be > 0
+  if (max_ref_its == 0)
+    throw ExcMessage("max_ref_its in Problem must be > 0");
+
   // Allocate storage for reflecting boundaries
   if (description.has_reflecting_bcs())
   {
@@ -104,7 +126,7 @@ Problem<dim>::setup()
 
         for (const types::global_dof_index dof : face_dofs)
         {
-          // Initialize storage for the net current on reflective boundaries (for DSA)
+          // Initialize storage for the net current on reflective boundaries
           reflective_dJ.emplace(dof, 0);
           // Store this normal for computation of the reflected flux integral later
           reflective_dof_normals.emplace(dof, normal_hat);
@@ -119,40 +141,83 @@ Problem<dim>::setup()
 
   // Setup the problems
   sn.setup();
-  dsa.setup();
+  if (enable_dsa && description.has_scattering())
+    dsa.setup();
 }
 
 template <int dim>
 void
 Problem<dim>::solve()
 {
-  for (unsigned int l = 0; l < max_its; ++l)
+  // Norm of the current on reflecting boundaries
+  double reflective_dJ_norm;
+
+  for (unsigned int l_source = 0; l_source < max_source_its; ++l_source)
   {
-    pcout << "Source iteration " << l << std::endl;
+    pcout << "Source iteration " << l_source << std::endl;
 
-    // Solve all directions with SN
-    sn.assemble_and_solve();
+    // Copy to old scalar flux (only needed between source iterations)
+    scalar_flux_old = scalar_flux;
 
-    // Do not iterate without scattering
+    for (unsigned int l_ref = 0; l_ref < max_ref_its; ++l_ref)
+    {
+      // Zero for scalar flux update
+      scalar_flux = 0;
+
+      if (description.has_reflecting_bcs())
+      {
+        pcout << "  Reflective iteration " << l_ref << std::endl;
+        // Zero dJ on reflective boundaries
+        for (auto & dof_value_pair : reflective_dJ)
+          dof_value_pair.second = 0;
+      }
+
+      // Assmemble, solve, and update all directions with SN
+      sn.assemble_solve_update();
+
+      // Check for convergence of the reflecting boundaries
+      if (description.has_reflecting_bcs())
+      {
+        // Compute norm of dJ on the reflective boundary
+        reflective_dJ_norm = reflective_dJ_L2();
+        pcout << "  Reflecting BC net current L2 norm: " << std::scientific << std::setprecision(2)
+              << reflective_dJ_norm << std::endl
+              << std::endl;
+        // Converged: exit reflecting boundary loop
+        if (reflective_dJ_norm < reflective_iteration_tol)
+          break;
+      }
+      // No reflecting boundaries: exit reflecting boundary loop
+      else
+        break;
+    } // End reflecting boundary iterations
+
+    // No source iteration without scattering
     if (!description.has_scattering())
       return;
 
-    // Solve for DSA scalar flux correction
-    dsa.assemble_and_solve();
+    // Assemble, solve, and update with DSA
+    if (enable_dsa)
+      dsa.assemble_solve_update();
 
     // Compute L2 norm of (scalar_flux - scalar_flux_old) and store
-    const double norm = scalar_flux_L2();
-    residuals.emplace_back(norm);
-    pcout << "  Scalar flux L2 difference: " << std::scientific << std::setprecision(2) << norm
-          << std::endl
+    residuals.emplace_back(scalar_flux_L2());
+    pcout << "  Scalar flux L2 difference: " << std::scientific << std::setprecision(2)
+          << residuals.back() << std::endl
           << std::endl;
 
-    // Exit if converged
-    if (norm < source_iteration_tol)
-      return;
-  }
+    // If we have reflecting boundaries and they are still not converged, continue
+    // to the next source iteration (don't check for source iteration convergence)
+    if (description.has_reflecting_bcs() && reflective_dJ_norm > reflective_iteration_tol)
+      continue;
 
-  pcout << "Did not converge after " << max_its << " source iterations!" << std::endl;
+    // Break source iterations if converged
+    if (residuals.back() < source_iteration_tol)
+      return;
+
+  } // End source iterations
+
+  pcout << "Did not converge after " << max_source_its << " source iterations!" << std::endl;
 }
 
 template <int dim>
@@ -178,6 +243,47 @@ Problem<dim>::scalar_flux_L2() const
       const double diff = scalar_flux[indices[i]] - scalar_flux_old[indices[i]];
       for (unsigned int q = 0; q < quadrature.size(); ++q)
         value += std::pow(fe_v.shape_value(i, q) * diff, 2) * fe_v.JxW(q);
+    }
+  }
+
+  // Gather among all processors
+  return Utilities::MPI::sum(value, comm);
+}
+
+template <int dim>
+double
+Problem<dim>::reflective_dJ_L2() const
+{
+  const auto & fe = dof_handler.get_fe();
+  QGauss<dim - 1> quadrature(fe.degree + 1);
+  FEFaceValues<dim> fe_v(fe, quadrature, update_values | update_JxW_values);
+  std::vector<types::global_dof_index> indices(fe.dofs_per_cell);
+  double value = 0;
+
+  for (const auto & cell : dof_handler.active_cell_iterators())
+  {
+    // Immediately skip non-local and non-boundary cells
+    if (!cell->is_locally_owned() || !cell->at_boundary())
+      continue;
+
+    cell->get_dof_indices(indices);
+
+    for (unsigned int f = 0; f < GeometryInfo<dim>::faces_per_cell; ++f)
+    {
+      // Skip non-boundary faces and non-reflective faces
+      const auto & face = cell->face(f);
+      if (!face->at_boundary() ||
+          description.get_bc(face->boundary_id()).type != BCTypes::Reflective)
+        continue;
+
+      fe_v.reinit(cell, f);
+      for (unsigned int i = 0; i < fe.dofs_per_cell; ++i)
+        if (fe.has_support_on_face(i, f))
+        {
+          const double dJ = reflective_dJ.at(indices[i]);
+          for (unsigned int q = 0; q < quadrature.size(); ++q)
+            value += std::pow(fe_v.shape_value(i, q) * dJ, 2) * fe_v.JxW(q);
+        }
     }
   }
 

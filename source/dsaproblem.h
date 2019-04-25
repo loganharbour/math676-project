@@ -33,11 +33,8 @@ public:
 
   /// Initial setup for the DSAProblem
   void setup();
-  // Solve the DSAProblem
-  void assemble_and_solve();
-
-  /// Whether or not DSA is enabled
-  bool is_enabled() const { return enabled; }
+  /// Assemble, solve, and update DSA
+  void assemble_solve_update();
 
 private:
   /// Assemble the initial LHS, which remain constants
@@ -91,7 +88,7 @@ private:
   const std::map<types::global_dof_index, HatDirection> & reflective_dof_normals;
   /// Incoming angular flux on the reflective boundaries
   std::vector<std::map<types::global_dof_index, double>> & reflective_incoming_flux;
-  /// Net current on the reflective boundaries (for DSA)
+  /// Net current on the reflective boundaries
   const std::map<types::global_dof_index, double> & reflective_dJ;
 
   /// System storage owned by the Problem
@@ -102,8 +99,6 @@ private:
   /// System storage for the constant LHS
   LA::MPI::SparseMatrix dsa_matrix;
 
-  /// Whether or not DSA is enabled
-  bool enabled = true;
   /// Whether or not acceleration using dJ is enabled for reflective bcs
   bool reflective_bc_acceleration = true;
 };

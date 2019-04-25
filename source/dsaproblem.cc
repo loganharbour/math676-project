@@ -34,9 +34,6 @@ DSAProblem<dim>::DSAProblem(Problem<dim> & problem)
     system_rhs(problem.get_system_rhs()),
     system_solution(problem.get_system_solution())
 {
-  // Whether or not DSA is enabled (default: true)
-  add_parameter("enabled", enabled);
-
   // Whether or not reflective bc acceleration is enabled (default: true)
   add_parameter("reflective_bc_acceleration", reflective_bc_acceleration);
 }
@@ -46,9 +43,6 @@ void
 DSAProblem<dim>::setup()
 {
   TimerOutput::Scope t(timer, "DSAProblem setup");
-  // Do not setup without scattering or if it is disabled
-  if (!description.has_scattering() || !enabled)
-    return;
 
   // Initialize constant system storage
   dsa_matrix.reinit(discretization.get_locally_owned_dofs(),
@@ -62,12 +56,8 @@ DSAProblem<dim>::setup()
 
 template <int dim>
 void
-DSAProblem<dim>::assemble_and_solve()
+DSAProblem<dim>::assemble_solve_update()
 {
-  // Skip if disabled
-  if (!enabled)
-    return;
-
   assemble();
   solve();
 
@@ -345,7 +335,7 @@ template DSAProblem<3>::DSAProblem(Problem<3> & problem);
 template void DSAProblem<2>::setup();
 template void DSAProblem<3>::setup();
 
-template void DSAProblem<2>::assemble_and_solve();
-template void DSAProblem<3>::assemble_and_solve();
+template void DSAProblem<2>::assemble_solve_update();
+template void DSAProblem<3>::assemble_solve_update();
 
 } // namespace RadProblem

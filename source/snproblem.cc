@@ -34,8 +34,6 @@ SNProblem<dim>::SNProblem(Problem<dim> & problem)
     system_rhs(problem.get_system_rhs()),
     system_solution(problem.get_system_solution())
 {
-  // Number of reflective BC iterations (default: 1 due to DSA acceleration)
-  add_parameter("reflective_bc_iterations", reflective_bc_iterations);
 }
 
 template <int dim>
@@ -52,82 +50,19 @@ SNProblem<dim>::setup()
 
   // Pass the matrix and rhs to the assembler
   assembler.initialize(system_matrix, system_rhs);
-
-  // Allocate storage for scalar flux on the reflective boundaries (used for checking
-  // convergence of the reflective bc iterations)
-  for (const auto & dof_normal_pair : reflective_dof_normals)
-  {
-    reflective_scalar_flux.emplace(dof_normal_pair.first, 0);
-    reflective_scalar_flux_old.emplace(dof_normal_pair.first, 0);
-  }
-
-  // Reflective BC iterations needs to be > 0
-  if (reflective_bc_iterations == 0)
-    throw ExcMessage("reflective_bc_iterations in SNProblem must be > 0");
-
-  // If we do not have scattering and we have reflective BCs, make sure that the
-  // reflective BC iterations is not 1 otherwise it will not converge
-  if (!description.has_scattering() && description.has_reflecting_bcs() &&
-      reflective_bc_iterations == 1)
-  {
-    pcout << "\nSNProblem reflecting_bc_iterations is set to 1, but there is no scattering\n"
-          << "and therefore the reflective boundary conditions will likely not converge.\n"
-          << "It is being set by default to 10. Set it greater than 1 to escape this warning.\n\n";
-    reflective_bc_iterations = 10;
-  }
 }
 
 template <int dim>
 void
-SNProblem<dim>::assemble_and_solve()
+SNProblem<dim>::assemble_solve_update()
 {
-  // Copy to old scalar flux
-  scalar_flux_old = scalar_flux;
-
-  for (unsigned int l = 0; l < reflective_bc_iterations; ++l)
-  {
-    // Zero for scalar flux update
-    scalar_flux = 0;
-
-    if (description.has_reflecting_bcs())
-    {
-      pcout << "  Reflective iteration " << l << std::endl;
-      // Copy to old reflective scalar flux
-      for (auto & dof_value_old_pair : reflective_scalar_flux_old)
-        dof_value_old_pair.second = reflective_scalar_flux[dof_value_old_pair.first];
-      // Zero net current on reflective boundaries for DSA
-      for (auto & dof_value_pair : reflective_dJ)
-        dof_value_pair.second = 0;
-    }
-
-    // Solve each direction
-    for (unsigned int d = 0; d < aq.n_dir(); ++d)
-      assemble_and_solve(d);
-
-    if (description.has_reflecting_bcs())
-    {
-      // Update the new scalar flux on the reflective boundary
-      for (auto & dof_new_pair : reflective_scalar_flux)
-        dof_new_pair.second = scalar_flux[dof_new_pair.first];
-
-      // Compute norm of the scalar flux on the reflective boundary
-      const double norm = scalar_flux_reflective_L2();
-      pcout << "  Scalar flux reflecting L2 difference: " << std::scientific << std::setprecision(2)
-            << norm << std::endl
-            << std::endl;
-
-      // Converged
-      if (norm < 1e-12)
-        return;
-    }
-    else
-      return;
-  }
+  for (unsigned int d = 0; d < aq.n_dir(); ++d)
+    assemble_solve_update(d);
 }
 
 template <int dim>
 void
-SNProblem<dim>::assemble_and_solve(const unsigned int d)
+SNProblem<dim>::assemble_solve_update(const unsigned int d)
 {
   // Updates for reflecting bcs before sweep (incoming current on reflective boundaries)
   if (description.has_reflecting_bcs())
@@ -404,55 +339,13 @@ SNProblem<dim>::update_for_reflective_bc(const unsigned int d, const bool before
   }
 }
 
-template <int dim>
-double
-SNProblem<dim>::scalar_flux_reflective_L2() const
-{
-  const auto & fe = dof_handler.get_fe();
-  QGauss<dim - 1> quadrature(fe.degree + 1);
-  FEFaceValues<dim> fe_v(fe, quadrature, update_values | update_JxW_values);
-  std::vector<types::global_dof_index> indices(fe.dofs_per_cell);
-  double value = 0;
-
-  for (const auto & cell : dof_handler.active_cell_iterators())
-  {
-    // Immediately skip non-local and non-boundary cells
-    if (!cell->is_locally_owned() || !cell->at_boundary())
-      continue;
-
-    cell->get_dof_indices(indices);
-
-    for (unsigned int f = 0; f < GeometryInfo<dim>::faces_per_cell; ++f)
-    {
-      // Skip non-boundary faces and non-reflective faces
-      const auto & face = cell->face(f);
-      if (!face->at_boundary() ||
-          description.get_bc(face->boundary_id()).type != BCTypes::Reflective)
-        continue;
-
-      fe_v.reinit(cell, f);
-      for (unsigned int i = 0; i < fe.dofs_per_cell; ++i)
-        if (fe.has_support_on_face(i, f))
-        {
-          const unsigned int dof = indices[i];
-          const double diff = reflective_scalar_flux.at(dof) - reflective_scalar_flux_old.at(dof);
-          for (unsigned int q = 0; q < quadrature.size(); ++q)
-            value += std::pow(fe_v.shape_value(i, q) * diff, 2) * fe_v.JxW(q);
-        }
-    }
-  }
-
-  // Gather among all processors
-  return Utilities::MPI::sum(value, comm);
-}
-
 template SNProblem<2>::SNProblem(Problem<2> & problem);
 template SNProblem<3>::SNProblem(Problem<3> & problem);
 
 template void SNProblem<2>::setup();
 template void SNProblem<3>::setup();
 
-template void SNProblem<2>::assemble_and_solve();
-template void SNProblem<3>::assemble_and_solve();
+template void SNProblem<2>::assemble_solve_update();
+template void SNProblem<3>::assemble_solve_update();
 
 } // namespace RadProblem

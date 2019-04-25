@@ -16,7 +16,6 @@ class Discretization;
 enum BCTypes
 {
   Isotropic,
-  Perpendicular,
   Reflective,
   Vacuum
 };

@@ -34,12 +34,15 @@ public:
   /// Initial setup for the SNProblem
   void setup();
 
-  /// Solve all directions
-  void assemble_and_solve();
+  /// Assemble, solve, and update all directions
+  void assemble_solve_update();
+
+  double get_reflective_DJ_norm() const { return reflective_dJ_norm; }
 
 private:
   /// Solve and fill scalar flux for angular direction d
-  void assemble_and_solve(const unsigned int d);
+  void assemble_solve_update(const unsigned int d);
+  /// Internal solve of the system for angular direction d
   void solve(const unsigned int d);
 
   /// Assemble LHS and RHS for angular direction d
@@ -59,8 +62,6 @@ private:
                       MeshWorker::IntegrationInfo<dim> & info2,
                       const unsigned int d) const;
 
-  /// Compute the L2 difference of the scalar flux on the reflective boundary
-  double scalar_flux_reflective_L2() const;
   /// Updates for reflective bcs before and after a single angular sweep
   void update_for_reflective_bc(const unsigned int d, const bool before_sweep);
 
@@ -90,18 +91,16 @@ private:
   std::map<types::global_dof_index, HatDirection> & reflective_dof_normals;
   /// Incoming angular flux on the reflective boundaries
   std::vector<std::map<types::global_dof_index, double>> & reflective_incoming_flux;
-  /// Net current on the reflective boundaries (for DSA)
+  /// Net current on the reflective boundaries
   std::map<types::global_dof_index, double> & reflective_dJ;
-
-  /// Scalar flux on the reflective boundary (used for checking convergence)
-  std::map<types::global_dof_index, double> reflective_scalar_flux;
-  /// Old scalar flux on the reflective boundary (used for checking convergence)
-  std::map<types::global_dof_index, double> reflective_scalar_flux_old;
 
   /// System storage owned by the Problem
   LA::MPI::SparseMatrix & system_matrix;
   LA::MPI::Vector & system_rhs;
   LA::MPI::Vector & system_solution;
+
+  /// Most recent norm of the net current on the reflecting boundary
+  double reflective_dJ_norm = std::numeric_limits<double>::min();
 
   /// InfoBox for MeshWorker
   MeshWorker::IntegrationInfoBox<dim> info_box;

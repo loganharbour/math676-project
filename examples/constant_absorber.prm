@@ -20,11 +20,7 @@ subsection Discretization
 end
 
 
-subsection SNProblem
-  set reflective_bc_iterations = 5
-end
-
-
 subsection Problem
+  set max_reflective_iterations = 5
   set vtu_filename = constant_absorber
 end
