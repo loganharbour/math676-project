@@ -15,8 +15,13 @@ end
 
 
 subsection Discretization
-set aq_order           = 8
-set uniform_refinement = 5
+  set aq_order           = 8
+  set uniform_refinement = 5
+end
+
+
+subsection SNProblem
+  set reflective_bc_iterations = 5
 end
 
 
