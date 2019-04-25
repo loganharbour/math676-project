@@ -34,7 +34,7 @@ SNProblem<dim>::SNProblem(Problem<dim> & problem)
     system_rhs(problem.get_system_rhs()),
     system_solution(problem.get_system_solution())
 {
-  // Number of reflective BC iterations
+  // Number of reflective BC iterations (default: 1 due to DSA acceleration)
   add_parameter("reflective_bc_iterations", reflective_bc_iterations);
 }
 
@@ -59,6 +59,21 @@ SNProblem<dim>::setup()
   {
     reflective_scalar_flux.emplace(dof_normal_pair.first, 0);
     reflective_scalar_flux_old.emplace(dof_normal_pair.first, 0);
+  }
+
+  // Reflective BC iterations needs to be > 0
+  if (reflective_bc_iterations == 0)
+    throw ExcMessage("reflective_bc_iterations in SNProblem must be > 0");
+
+  // If we do not have scattering and we have reflective BCs, make sure that the
+  // reflective BC iterations is not 1 otherwise it will not converge
+  if (!description.has_scattering() && description.has_reflecting_bcs() &&
+      reflective_bc_iterations == 1)
+  {
+    pcout << "\nSNProblem reflecting_bc_iterations is set to 1, but there is no scattering\n"
+          << "and therefore the reflective boundary conditions will likely not converge.\n"
+          << "It is being set by default to 10. Set it greater than 1 to escape this warning.\n\n";
+    reflective_bc_iterations = 10;
   }
 }
 

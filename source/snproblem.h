@@ -108,7 +108,7 @@ private:
   /// Assembler used by the MeshWorker::loop
   MeshWorker::Assembler::SystemSimple<LA::MPI::SparseMatrix, LA::MPI::Vector> assembler;
 
-  unsigned int reflective_bc_iterations = 20;
+  unsigned int reflective_bc_iterations = 1;
 };
 } // namespace RadProblem
 
