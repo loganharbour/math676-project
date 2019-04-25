@@ -30,7 +30,7 @@ Problem<dim>::Problem()
 
   // Maximum source iterations (default: 1)
   add_parameter("max_reflective_iterations", max_ref_its);
-  // Source iteration tolerance (defaut: 1e-12)
+  // Source iteration tolerance (defaut: 1e-16)
   add_parameter("reflective_iteration_tolerance", reflective_iteration_tol);
 
   // Enable DSA (default: true)

@@ -137,7 +137,7 @@ private:
   /// Maximum reflective boundary iterations
   unsigned int max_ref_its = 1;
   /// Reflective boundary iteration tolerance
-  double reflective_iteration_tol = 1.0e-12;
+  double reflective_iteration_tol = 1.0e-16;
 
   /// Enable DSA
   bool enable_dsa = true;
