@@ -1,0 +1,19 @@
+# ---------------------
+subsection Description
+  set material_ids              = 0, 1
+  set material_sigma_s          = 0, 0
+  set material_sigma_t          = 0.05, 0.5
+  set material_src              = 1, 0
+  set vacuum_boundary_ids       = 0
+end
+
+
+subsection Discretization
+  set aq_order           = 6
+  set msh                = mesh-generation/atm.msh
+end
+
+
+subsection Problem
+  set vtu_filename = atm
+end
