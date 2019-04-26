@@ -73,7 +73,9 @@ private:
   /// Mesh uniform refinements
   unsigned int uniform_refinement = 0;
   /// Hyper cube mesh bounds
-  std::vector<double> hypercube_bounds = {0, 10};
+  std::vector<double> hypercube_bounds = {};
+  /// Gmsh filename
+  std::string msh;
 };
 
 } // namespace RadProblem

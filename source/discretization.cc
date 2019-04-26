@@ -3,6 +3,7 @@
 #include <deal.II/base/utilities.h>
 #include <deal.II/dofs/dof_tools.h>
 #include <deal.II/grid/grid_generator.h>
+#include <deal.II/grid/grid_in.h>
 #include <deal.II/lac/sparsity_tools.h>
 
 namespace RadProblem
@@ -27,6 +28,8 @@ Discretization<dim>::Discretization(MPI_Comm & comm, TimerOutput & timer)
 
   // Generate a hyper cube mesh (default: {0, 10}); empty if no hypercube generation
   add_parameter("hypercube_bounds", hypercube_bounds);
+  // Generate a mesh from gmsh
+  add_parameter("msh", msh);
 }
 
 template <int dim>
@@ -59,13 +62,22 @@ template <int dim>
 void
 Discretization<dim>::generate_mesh()
 {
+  if (hypercube_bounds.size() != 0 && msh.length() != 0)
+    throw ExcMessage("msh and hypercube_bounds cannot be supplied together");
   if (hypercube_bounds.size() != 0 && hypercube_bounds.size() != 2)
     throw ExcMessage("hypercube_bounds must be of size 2 (lower and upper bounds)");
-  if (hypercube_bounds.size() == 0)
-    throw ExcMessage("hypercube_bounds must be set (no other mesh currently supported)");
 
   // Generate hyper cube
-  GridGenerator::hyper_cube(triangulation, hypercube_bounds[0], hypercube_bounds[1], true);
+  if (hypercube_bounds.size() != 0)
+    GridGenerator::hyper_cube(triangulation, hypercube_bounds[0], hypercube_bounds[1], true);
+  // Generate from gmsh
+  else if (msh.length() != 0)
+  {
+    GridIn<dim> gridin;
+    gridin.attach_triangulation(triangulation);
+    std::ifstream f(msh);
+    gridin.read_msh(f);
+  }
 
   // Refine if requested
   triangulation.refine_global(uniform_refinement);
