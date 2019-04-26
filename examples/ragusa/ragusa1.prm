@@ -1,0 +1,23 @@
+# ---------------------
+subsection Description
+  set material_ids                 = 0
+  set material_sigma_s             = 0
+  set material_sigma_t             = 0
+  set material_src                 = 0
+  set vacuum_boundary_ids          = 0, 1, 3
+  set incident_boundary_ids        = 2
+  set incident_boundary_fluxes     = 1
+  set incident_boundary_directions = 0, 1
+end
+
+
+subsection Discretization
+  set aq_order           = 8
+  set hypercube_bounds   = 0, 100
+  set uniform_refinement = 5
+end
+
+
+subsection Problem
+  set vtu_filename = ragusa1
+end
