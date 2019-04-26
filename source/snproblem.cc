@@ -214,8 +214,8 @@ SNProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
     // Set the values at each qp as necessary depending on type
     std::vector<double> bc_values(fe_v.n_quadrature_points, 0);
     const auto & bc = description.get_bc(dinfo.face->boundary_id());
-    // Isotropic boundary conditions
-    if (bc.type == BCTypes::Isotropic)
+    // Isotropic boundary conditions or incident into this direction
+    if (bc.type == BCTypes::Isotropic || (bc.type == BCTypes::Incident && bc.d == d))
     {
       for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
         bc_values[q] = bc.value;

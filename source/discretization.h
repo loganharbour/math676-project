@@ -74,6 +74,8 @@ private:
   unsigned int uniform_refinement = 0;
   /// Hyper cube mesh bounds
   std::vector<double> hypercube_bounds = {};
+  /// Split top and bottom material
+  bool split_top_bottom = false;
   /// Gmsh filename
   std::string msh;
 };

@@ -30,6 +30,9 @@ Discretization<dim>::Discretization(MPI_Comm & comm, TimerOutput & timer)
   add_parameter("hypercube_bounds", hypercube_bounds);
   // Generate a mesh from gmsh
   add_parameter("msh", msh);
+
+  // Split top and bottom material
+  add_parameter("split_top_bottom", split_top_bottom);
 }
 
 template <int dim>
@@ -64,6 +67,10 @@ Discretization<dim>::generate_mesh()
 {
   if (hypercube_bounds.size() != 0 && msh.length() != 0)
     throw ExcMessage("msh and hypercube_bounds cannot be supplied together");
+  if (hypercube_bounds.size() == 0 && split_top_bottom)
+    throw ExcMessage("split_top_bottom only works with hypercube mesh");
+  if (split_top_bottom && dim != 2)
+    throw ExcMessage("split_top_bottom only works in 2D");
   if (hypercube_bounds.size() != 0 && hypercube_bounds.size() != 2)
     throw ExcMessage("hypercube_bounds must be of size 2 (lower and upper bounds)");
 
@@ -83,10 +90,14 @@ Discretization<dim>::generate_mesh()
   triangulation.refine_global(uniform_refinement);
 
   // Fill the boundary and material ids that exist on the local mesh
-  for (const auto & cell : dof_handler.active_cell_iterators())
+  for (auto & cell : dof_handler.active_cell_iterators())
   {
     if (!cell->is_locally_owned())
       continue;
+
+    // Set material in the upper half to 1 with split_top_bottom
+    if (split_top_bottom && cell->center()[1] > (hypercube_bounds[0] + hypercube_bounds[1]) / 2)
+      cell->set_material_id(1);
 
     local_material_ids.insert(cell->material_id());
     if (!cell->at_boundary())
@@ -104,13 +115,13 @@ Discretization<dim>::generate_mesh()
       boundary_ids = {0, 1, 2, 3};
     else
       boundary_ids = {0, 1, 2, 3, 4, 5};
-    material_ids = {0};
   }
   else
-  {
     boundary_ids = {0};
+  if (split_top_bottom || hypercube_bounds.size() == 0)
     material_ids = {0, 1};
-  }
+  else
+    material_ids = {0};
 }
 
 template Discretization<2>::Discretization(MPI_Comm & comm, TimerOutput & timer);
