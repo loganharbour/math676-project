@@ -10,7 +10,7 @@ end
 
 subsection Discretization
   set aq_order           = 6
-  set msh                = mesh-generation/atm.msh
+  set msh                = atm.msh
 end
 
 
