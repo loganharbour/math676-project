@@ -98,11 +98,19 @@ Discretization<dim>::generate_mesh()
 
   // TODO: Communicate the boundary and material ids to all processors. Therefore,
   // this is hardcoded for now.
-  if (dim == 2)
-    boundary_ids = {0, 1, 2, 3};
+  if (hypercube_bounds.size() != 0)
+  {
+    if (dim == 2)
+      boundary_ids = {0, 1, 2, 3};
+    else
+      boundary_ids = {0, 1, 2, 3, 4, 5};
+    material_ids = {0};
+  }
   else
-    boundary_ids = {0, 1, 2, 3, 4, 5};
-  material_ids = {0};
+  {
+    boundary_ids = {0};
+    material_ids = {0, 1};
+  }
 }
 
 template Discretization<2>::Discretization(MPI_Comm & comm, TimerOutput & timer);
