@@ -36,6 +36,13 @@ DSAProblem<dim>::DSAProblem(Problem<dim> & problem)
 {
   // Whether or not reflective bc acceleration is enabled (default: true)
   add_parameter("reflective_bc_acceleration", reflective_bc_acceleration);
+
+  // Whether or not to enable detailed solver output (default: false)
+  add_parameter("detailed_solver_output", detailed_solver_output);
+  // Relative tolerance (default: 1e-12)
+  add_parameter("relative_tolerance", relative_tolerance);
+  // Absolute tolerance (default: 1e-12)
+  add_parameter("absolute_tolerance", absolute_tolerance);
 }
 
 template <int dim>
@@ -88,15 +95,16 @@ template <int dim>
 void
 DSAProblem<dim>::solve()
 {
-  // Solve system
   TimerOutput::Scope t1(timer, "DSAProblem solve");
+
   system_solution = 0;
-  SolverControl control(1000, 1e-12);
-  LA::SolverCG solver(control);
+  SolverControl control(1000, relative_tolerance * system_rhs.l2_norm() + absolute_tolerance);
+  LA::SolverCG::AdditionalData cg_data(detailed_solver_output);
+  LA::SolverCG solver(control, cg_data);
   LA::MPI::PreconditionAMG preconditioner;
-  LA::MPI::PreconditionAMG::AdditionalData data;
   preconditioner.initialize(system_matrix);
   solver.solve(system_matrix, system_solution, system_rhs, preconditioner);
+
   pcout << "  DSA converged after " << control.last_step() << " CG iterations" << std::endl;
 }
 

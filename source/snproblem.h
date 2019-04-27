@@ -109,7 +109,12 @@ private:
   /// Assembler used by the MeshWorker::loop
   MeshWorker::Assembler::SystemSimple<LA::MPI::SparseMatrix, LA::MPI::Vector> assembler;
 
-  unsigned int reflective_bc_iterations = 1;
+  /// Whether or not to enable detailed solver output
+  bool detailed_solver_output = false;
+  /// Relative tolerance
+  double relative_tolerance = 1e-12;
+  /// Absolute tolerance
+  double absolute_tolerance = 1e-12;
 };
 } // namespace RadProblem
 

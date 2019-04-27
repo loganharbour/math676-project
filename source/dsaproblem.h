@@ -101,6 +101,13 @@ private:
 
   /// Whether or not acceleration using dJ is enabled for reflective bcs
   bool reflective_bc_acceleration = true;
+  
+  /// Whether or not to enable detailed solver output
+  bool detailed_solver_output = false;
+  /// Relative tolerance
+  double relative_tolerance = 1e-12;
+  /// Absolute tolerance
+  double absolute_tolerance = 1e-12;
 };
 } // namespace RadProblem
 

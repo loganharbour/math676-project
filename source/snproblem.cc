@@ -35,6 +35,12 @@ SNProblem<dim>::SNProblem(Problem<dim> & problem)
     system_rhs(problem.get_system_rhs()),
     system_solution(problem.get_system_solution())
 {
+  // Whether or not to enable detailed solver output
+  add_parameter("detailed_solver_output", detailed_solver_output);
+  // Relative tolerance (default: 1e-12)
+  add_parameter("relative_tolerance", relative_tolerance);
+  // Absolute tolerance (default: 1e-12)
+  add_parameter("absolute_tolerance", absolute_tolerance);
 }
 
 template <int dim>
@@ -94,15 +100,17 @@ void
 SNProblem<dim>::solve(const unsigned int d)
 {
   TimerOutput::Scope t(timer, "SNProblem solve");
+  
   system_solution = 0;
-  SolverControl solver_control(1000, 1e-12);
-  TrilinosWrappers::SolverGMRES solver(solver_control);
+  SolverControl control(1000, relative_tolerance * system_rhs.l2_norm() + absolute_tolerance);
+  TrilinosWrappers::SolverGMRES::AdditionalData gmres_data(detailed_solver_output);
+  TrilinosWrappers::SolverGMRES solver(control, gmres_data);
   LA::MPI::PreconditionAMG preconditioner;
   preconditioner.initialize(system_matrix);
   solver.solve(system_matrix, system_solution, system_rhs, preconditioner);
 
-  pcout << "  Direction " << d << " converged after " << solver_control.last_step()
-        << " GMRES iterations " << std::endl;
+  pcout << "  Direction " << d << " converged after " << control.last_step() << " GMRES iterations "
+        << std::endl;
 }
 
 template <int dim>
