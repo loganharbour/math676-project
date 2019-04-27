@@ -86,19 +86,18 @@ Problem<dim>::setup()
       angular_flux[d].reinit(discretization.get_locally_owned_dofs(), comm);
   }
 
-  // If we do not have scattering and we have reflective BCs, make sure that the
-  // reflective BC iterations is not 1 otherwise it will not converge
+  // Sanity checks on reflecting boundary condition iteraions
   if (!description.has_scattering() && description.has_reflecting_bcs() && max_ref_its == 1)
   {
     pcout << "\nProblem max_ref_its is set to 1, but there is no scattering and therefore\n"
-          << "the reflective boundary conditions will likely not converge. max_ref_its is\n"
+          << " the reflective boundary conditions will likely not converge. max_ref_its is\n"
           << " being set to 4. Set it greater than 1 to escape this warning.\n\n";
     max_ref_its = 4;
   }
   if (description.has_scattering() && !enable_dsa && max_ref_its == 1)
   {
     pcout << "\nProblem max_ref_its is set to 1 because DSA can converge the reflecting\n"
-          << " boundary conditions. However, you have disabled DSA and therefore the"
+          << " boundary conditions. However, you have disabled DSA and therefore the\n"
           << " reflecting boundary conditions will likely not converge. max_ref_its is\n"
           << " being set to 4. Set it greater than 1 to escape this warning.\n\n";
     max_ref_its = 4;
