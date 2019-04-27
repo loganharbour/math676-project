@@ -1,4 +1,9 @@
-# ---------------------
+# from e-mail:
+# Square domain split in 2 rectangular half (top/bottom). Incidence in one
+# direction at bottom face. Lower half: sigma_t=0.01. Upper half half:
+# sigma_t = 100. Scattering ration in both zones = 0.99. Volumetric source only
+# present on top half.
+
 subsection Description
   set material_ids                 = 0, 1
   set material_sigma_s             = 0.0099, 99
@@ -20,5 +25,6 @@ end
 
 
 subsection Problem
-  set vtu_filename = ragusa2
+  set vtu_filename = ragusa3
+  set save_angular_flux = true
 end
