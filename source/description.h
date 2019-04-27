@@ -42,7 +42,7 @@ struct BC
 struct Material
 {
   Material(const double sigma_t, const double sigma_s, const double src)
-    : D(1.0 / (3 * sigma_t)),
+    : D(1.0 / (3 * std::max(sigma_t, 1E-5))),
       sigma_t(sigma_t),
       sigma_s(sigma_s),
       sigma_a(sigma_t - sigma_s),
