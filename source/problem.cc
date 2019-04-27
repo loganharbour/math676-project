@@ -90,16 +90,16 @@ Problem<dim>::setup()
   if (!description.has_scattering() && description.has_reflecting_bcs() && max_ref_its == 1)
   {
     pcout << "\nProblem max_ref_its is set to 1, but there is no scattering and therefore\n"
-          << " the reflective boundary conditions will likely not converge. max_ref_its is\n"
-          << " being set to 4. Set it greater than 1 to escape this warning.\n\n";
+          << "the reflective boundary conditions will likely not converge. max_ref_its is\n"
+          << "being set to 4. Set it greater than 1 to escape this warning.\n\n";
     max_ref_its = 4;
   }
   if (description.has_scattering() && !enable_dsa && max_ref_its == 1)
   {
     pcout << "\nProblem max_ref_its is set to 1 because DSA can converge the reflecting\n"
-          << " boundary conditions. However, you have disabled DSA and therefore the\n"
-          << " reflecting boundary conditions will likely not converge. max_ref_its is\n"
-          << " being set to 4. Set it greater than 1 to escape this warning.\n\n";
+          << "boundary conditions. However, you have disabled DSA and therefore the\n"
+          << "reflecting boundary conditions will likely not converge. max_ref_its is\n"
+          << "being set to 4. Set it greater than 1 to escape this warning.\n\n";
     max_ref_its = 4;
   }
   if (max_ref_its == 0)
@@ -223,10 +223,10 @@ Problem<dim>::solve()
 
     // If we have reflecting boundaries and they are still not converged, continue
     // to the next source iteration (don't check for source iteration convergence)
-    if (description.has_reflecting_bcs() && reflective_dJ_norm > reflective_iteration_tol)
+    if (description.has_reflecting_bcs() && reflective_dJ_norm > reflective_iteration_tol &&
+        residuals.back() < source_iteration_tol)
     {
-      pcout << "\nSource iteration has technically converged but the reflective\n"
-            << " iterations have not! Consider increasing max_ref_its!\n\n";
+      pcout << "  Continuing due to reflective iteration tolerance\n\n";
       continue;
     }
 
