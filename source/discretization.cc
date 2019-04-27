@@ -26,12 +26,12 @@ Discretization<dim>::Discretization(MPI_Comm & comm, TimerOutput & timer)
   // Mesh uniform refinement levels (default: 0)
   add_parameter("uniform_refinement", uniform_refinement);
 
-  // Generate a hyper cube mesh (default: {0, 10}); empty if no hypercube generation
+  // Generate a hyper cube mesh (default: empty); empty if no hypercube generation
   add_parameter("hypercube_bounds", hypercube_bounds);
-  // Generate a mesh from gmsh
+  // Generate a mesh from gmsh (default: empty)
   add_parameter("msh", msh);
 
-  // Split top and bottom material
+  // Split top and bottom material (default: false)
   add_parameter("split_top_bottom", split_top_bottom);
 }
 
@@ -69,8 +69,8 @@ Discretization<dim>::generate_mesh()
     throw ExcMessage("msh and hypercube_bounds cannot be supplied together");
   if (hypercube_bounds.size() == 0 && split_top_bottom)
     throw ExcMessage("split_top_bottom only works with hypercube mesh");
-  if (split_top_bottom && dim != 2)
-    throw ExcMessage("split_top_bottom only works in 2D");
+  if (split_top_bottom && (dim != 2 || hypercube_bounds.size() == 0))
+    throw ExcMessage("split_top_bottom only works in 2D with hypercube mesh");
   if (hypercube_bounds.size() != 0 && hypercube_bounds.size() != 2)
     throw ExcMessage("hypercube_bounds must be of size 2 (lower and upper bounds)");
 

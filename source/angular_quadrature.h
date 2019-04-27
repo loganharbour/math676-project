@@ -171,11 +171,12 @@ public:
   // Get the direction that is closest to direction
   unsigned int closest(const Tensor<1, dim> & direction) const
   {
+    const Tensor<1, dim> unit_direction = direction / direction.norm();
     unsigned int d_closest;
     double norm_min = std::numeric_limits<double>::max();
     for (unsigned int d = 0; d < n_directions; ++d)
     {
-      double norm = (directions[d] - direction).norm();
+      double norm = (directions[d] - unit_direction).norm();
       if (norm < norm_min)
       {
         d_closest = d;

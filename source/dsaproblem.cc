@@ -221,6 +221,7 @@ void
 DSAProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
                                     MeshWorker::IntegrationInfo<dim> & info) const
 {
+  // Nothing to do without reflective bc correction
   if (!reflective_bc_acceleration || !description.has_reflecting_bcs() ||
       description.get_bc(dinfo.face->boundary_id()).type != BCTypes::Reflective)
     return;

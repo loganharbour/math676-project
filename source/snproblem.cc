@@ -35,7 +35,7 @@ SNProblem<dim>::SNProblem(Problem<dim> & problem)
     system_rhs(problem.get_system_rhs()),
     system_solution(problem.get_system_solution())
 {
-  // Whether or not to enable detailed solver output
+  // Whether or not to enable detailed solver output (default: false)
   add_parameter("detailed_solver_output", detailed_solver_output);
   // Relative tolerance (default: 1e-12)
   add_parameter("relative_tolerance", relative_tolerance);
@@ -86,11 +86,11 @@ SNProblem<dim>::assemble_solve_update(const unsigned int d)
   if (description.has_reflecting_bcs())
     update_for_reflective_bc(d, false);
 
-  // Update angular flux if enabled (check if it's sized)
+  // Update angular flux if enabled
   if (angular_flux.size() != 0)
     angular_flux[d] = system_solution;
 
-  // Update scalar flux at each node (weighed by angular weight)
+  // Update scalar flux at each node
   system_solution *= aq.w(d);
   scalar_flux += system_solution;
 }
@@ -100,7 +100,7 @@ void
 SNProblem<dim>::solve(const unsigned int d)
 {
   TimerOutput::Scope t(timer, "SNProblem solve");
-  
+
   system_solution = 0;
   SolverControl control(1000, relative_tolerance * system_rhs.l2_norm() + absolute_tolerance);
   TrilinosWrappers::SolverGMRES::AdditionalData gmres_data(detailed_solver_output);
@@ -142,6 +142,7 @@ SNProblem<dim>::assemble(const unsigned int d)
   // Call loop to execute the integration
   MeshWorker::DoFInfo<dim> dof_info(dof_handler);
   MeshWorker::LoopControl loop_control;
+  // With faces_to_ghost = both,
   loop_control.faces_to_ghost = MeshWorker::LoopControl::FaceOption::both;
   MeshWorker::loop<dim, dim, MeshWorker::DoFInfo<dim>, MeshWorker::IntegrationInfoBox<dim>>(
       dof_handler.begin_active(),
@@ -241,7 +242,7 @@ SNProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
         // Dof is not on this face
         if (!fe.has_support_on_face(i, dinfo.face_number))
           continue;
-        // Outgoing reflective angular flux at this dof from angle d_from
+        // Incoming reflected angular flux at the i-th local dof
         const double flux_i = reflective_incoming_flux[d].at(dinfo.indices[i]);
         // Accumulate at quadrature points
         for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)

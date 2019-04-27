@@ -102,8 +102,6 @@ Problem<dim>::setup()
           << " being set to 4. Set it greater than 1 to escape this warning.\n\n";
     max_ref_its = 4;
   }
-
-  // Reflective BC iterations needs to be > 0
   if (max_ref_its == 0)
     throw ExcMessage("max_ref_its in Problem must be > 0");
 
@@ -226,7 +224,11 @@ Problem<dim>::solve()
     // If we have reflecting boundaries and they are still not converged, continue
     // to the next source iteration (don't check for source iteration convergence)
     if (description.has_reflecting_bcs() && reflective_dJ_norm > reflective_iteration_tol)
+    {
+      pcout << "\nSource iteration has technically converged but the reflective\n"
+            << " iterations have not! Consider increasing max_ref_its!\n\n";
       continue;
+    }
 
     // Break source iterations if converged
     if (residuals.back() < source_iteration_tol)
