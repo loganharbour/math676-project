@@ -38,8 +38,6 @@ public:
   const LA::MPI::Vector & get_scalar_flux_old() const { return scalar_flux_old; }
   std::vector<LA::MPI::Vector> & get_angular_flux() { return angular_flux; }
 
-  bool get_save_angular_flux() const { return save_angular_flux; }
-
   LA::MPI::SparseMatrix & get_system_matrix() { return system_matrix; }
   LA::MPI::Vector & get_system_rhs() { return system_rhs; }
   LA::MPI::Vector & get_system_solution() { return system_solution; }

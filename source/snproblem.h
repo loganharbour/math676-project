@@ -37,8 +37,6 @@ public:
   /// Assemble, solve, and update all directions
   void assemble_solve_update();
 
-  double get_reflective_DJ_norm() const { return reflective_dJ_norm; }
-
 private:
   /// Solve and fill scalar flux for angular direction d
   void assemble_solve_update(const unsigned int d);
@@ -100,9 +98,6 @@ private:
   LA::MPI::SparseMatrix & system_matrix;
   LA::MPI::Vector & system_rhs;
   LA::MPI::Vector & system_solution;
-
-  /// Most recent norm of the net current on the reflecting boundary
-  double reflective_dJ_norm = std::numeric_limits<double>::min();
 
   /// InfoBox for MeshWorker
   MeshWorker::IntegrationInfoBox<dim> info_box;
