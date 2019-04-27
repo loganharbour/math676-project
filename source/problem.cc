@@ -22,6 +22,8 @@ Problem<dim>::Problem()
   add_parameter("vtu_filename", vtu_filename);
   // Residual vector output filename (default: empty); no output if empty
   add_parameter("residual_filename", residual_filename);
+  // Whether or not to save the angular flux (default: false)
+  add_parameter("save_angular_flux", save_angular_flux);
 
   // Maximum source iterations (default: 1000)
   add_parameter("max_source_iterations", max_source_its);
@@ -75,6 +77,14 @@ Problem<dim>::setup()
   // Resize scalar flux variables
   scalar_flux.reinit(discretization.get_locally_owned_dofs(), comm);
   scalar_flux_old.reinit(discretization.get_locally_owned_dofs(), comm);
+
+  // Resize angular flux variables
+  if (save_angular_flux)
+  {
+    angular_flux.resize(aq.n_dir());
+    for (unsigned int d = 0; d < aq.n_dir(); ++d)
+      angular_flux[d].reinit(discretization.get_locally_owned_dofs(), comm);
+  }
 
   // If we do not have scattering and we have reflective BCs, make sure that the
   // reflective BC iterations is not 1 otherwise it will not converge
@@ -307,6 +317,9 @@ Problem<dim>::output_vtu()
   DataOut<dim> data_out;
   data_out.attach_dof_handler(dof_handler);
   data_out.add_data_vector(scalar_flux, "scalar_flux");
+  if (save_angular_flux)
+    for (unsigned int d = 0; d < aq.n_dir(); ++d)
+      data_out.add_data_vector(angular_flux[d], "angular_flux_d" + Utilities::int_to_string(d));
 
   // Build processor partitioning
   Vector<float> subdomain(triangulation.n_active_cells());

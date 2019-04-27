@@ -27,6 +27,7 @@ SNProblem<dim>::SNProblem(Problem<dim> & problem)
     aq(discretization.get_aq()),
     scalar_flux(problem.get_scalar_flux()),
     scalar_flux_old(problem.get_scalar_flux_old()),
+    angular_flux(problem.get_angular_flux()),
     reflective_dof_normals(problem.get_reflective_dof_normals()),
     reflective_incoming_flux(problem.get_reflective_incoming_flux()),
     reflective_dJ(problem.get_reflective_dJ()),
@@ -78,6 +79,10 @@ SNProblem<dim>::assemble_solve_update(const unsigned int d)
   // and update incoming angular fluxes)
   if (description.has_reflecting_bcs())
     update_for_reflective_bc(d, false);
+
+  // Update angular flux if enabled (check if it's sized)
+  if (angular_flux.size() != 0)
+    angular_flux[d] = system_solution;
 
   // Update scalar flux at each node (weighed by angular weight)
   system_solution *= aq.w(d);

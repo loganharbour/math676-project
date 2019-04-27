@@ -61,7 +61,9 @@ DSAProblem<dim>::assemble_solve_update()
   assemble();
   solve();
 
-  // Update scalar flux with change
+  // Update scalar flux with change. Note that we do not update the angular flux
+  // if enabled beacuse by the time we reach convergence, DSA contribution will
+  // be insignificant
   scalar_flux += system_solution;
 
   // Update incoming angular fluxes on reflecting boundaries with change
@@ -97,7 +99,6 @@ DSAProblem<dim>::solve()
   solver.solve(system_matrix, system_solution, system_rhs, preconditioner);
   pcout << "  DSA converged after " << control.last_step() << " CG iterations" << std::endl;
 }
-
 
 template <int dim>
 void

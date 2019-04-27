@@ -36,6 +36,9 @@ public:
   LA::MPI::Vector & get_scalar_flux() { return scalar_flux; }
   LA::MPI::Vector & get_scalar_flux_old() { return scalar_flux_old; }
   const LA::MPI::Vector & get_scalar_flux_old() const { return scalar_flux_old; }
+  std::vector<LA::MPI::Vector> & get_angular_flux() { return angular_flux; }
+
+  bool get_save_angular_flux() const { return save_angular_flux; }
 
   LA::MPI::SparseMatrix & get_system_matrix() { return system_matrix; }
   LA::MPI::Vector & get_system_rhs() { return system_rhs; }
@@ -108,6 +111,8 @@ private:
   LA::MPI::Vector scalar_flux;
   /// Finite element representation of the scalar flux at the previous iteration
   LA::MPI::Vector scalar_flux_old;
+  /// Finite element representation of the angular flux (not stored by default)
+  std::vector<LA::MPI::Vector> angular_flux;
 
   /// The unit normal for each reflective boundary
   std::map<types::global_dof_index, HatDirection> reflective_dof_normals;
@@ -128,6 +133,8 @@ private:
   std::string vtu_filename = "output";
   /// Residual output filename
   std::string residual_filename = "";
+  /// Bool to save the angular flux
+  bool save_angular_flux = false;
 
   /// Maximum source iterations
   unsigned int max_source_its = 1000;

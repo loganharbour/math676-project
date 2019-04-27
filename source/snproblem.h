@@ -86,6 +86,8 @@ private:
   LA::MPI::Vector & scalar_flux;
   /// Access the old scalar flux DGFEM solution in the Problem
   LA::MPI::Vector & scalar_flux_old;
+  /// Access to the angular flux DGFEM solutions in the Problem
+  std::vector<LA::MPI::Vector> & angular_flux;
 
   /// The unit normal for each reflective boundary
   std::map<types::global_dof_index, HatDirection> & reflective_dof_normals;
