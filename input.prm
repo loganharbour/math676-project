@@ -1,0 +1,82 @@
+subsection Description
+  # Materials
+  set material_ids                 =
+  set material_sigma_s             =
+  set material_sigma_t             =
+  set material_src                 =
+
+  # Incident boundary conditions, direction is of length ids * dim
+  set incident_boundary_ids        =
+  set incident_boundary_directions =
+  set incident_boundary_fluxes     =
+
+  # Isotropic boundary conditions
+  set isotropic_boundary_ids       =
+  set isotropic_boundary_fluxes    =
+
+  # Reflective boundary conditions
+  set reflective_boundary_ids      =
+
+  # Vacuum boundary conditions
+  set vacuum_boundary_ids          =
+end
+
+
+subsection Discretization
+  # Angular quadrature order
+  set aq_order           = 10
+
+  # Hypercube mesh option (lower, upper bound)
+  set hypercube_bounds   =
+  # Set to enable the lower y-half to material id 0 and upper to id 1 (2D only)
+  set split_top_bottom   = false
+
+  # Gmsh filename
+  set msh                =
+
+  # Uniformly refin the mesh
+  set uniform_refinement = 0
+end
+
+
+subsection Problem
+  # Enable DSA
+  set dsa                            = true
+
+  # Max reflective iterations (default to 1 due to DSA reflective accel)
+  set max_reflective_iterations      = 1
+  # Tolerance for the L2 norm of the net current on reflective boundaries
+  set reflective_iteration_tolerance = 1e-16
+
+  # Max source iterations
+  set max_source_iterations          = 1000
+  # Tolerance for the L2 norm of (scalar flux new - old) for source iteration
+  set source_iteration_tolerance     = 1e-12
+  # Filename to save the source iteration L2 norms
+  set residual_filename              =
+
+  # Whether or not to save the angular fluxes
+  set save_angular_flux              = false
+
+  # Filename for .vtu output
+  set vtu_filename                   = output
+end
+
+
+subsection DSAProblem
+  # CG solver parameters
+  set absolute_tolerance         = 1e-12
+  set relative_tolerance         = 1e-12
+  set detailed_solver_output     = false
+
+  # Enable or disable acceleration of the reflective BCs with DSA
+  set reflective_bc_acceleration = true
+end
+
+
+subsection SNProblem
+  # GMRES solver parameters
+  set absolute_tolerance         = 1e-12
+  set relative_tolerance         = 1e-12
+  set detailed_solver_output     = false
+end
