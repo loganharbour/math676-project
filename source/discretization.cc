@@ -90,7 +90,7 @@ Discretization<dim>::generate_mesh()
   triangulation.refine_global(uniform_refinement);
 
   // Fill the boundary and material ids that exist on the local mesh
-  for (auto & cell : dof_handler.active_cell_iterators())
+  for (auto cell : triangulation.active_cell_iterators())
   {
     if (!cell->is_locally_owned())
       continue;
