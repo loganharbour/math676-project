@@ -4,7 +4,6 @@
 #include "angular_quadrature.h"
 
 #include <deal.II/base/parameter_acceptor.h>
-#include <deal.II/base/index_set.h>
 #include <deal.II/base/timer.h>
 #include <deal.II/distributed/tria.h>
 #include <deal.II/dofs/dof_handler.h>

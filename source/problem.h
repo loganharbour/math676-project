@@ -11,8 +11,6 @@
 #include <deal.II/base/timer.h>
 #include <deal.II/lac/generic_linear_algebra.h>
 
-#include <fstream>
-
 namespace LA = dealii::LinearAlgebraTrilinos;
 
 namespace RadProblem

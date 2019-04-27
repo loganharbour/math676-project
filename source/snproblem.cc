@@ -5,12 +5,6 @@
 #include "discretization.h"
 #include "problem.h"
 
-#include <deal.II/base/exceptions.h>
-#include <deal.II/integrators/l2.h>
-#include <deal.II/lac/precondition_block.h>
-#include <deal.II/lac/solver_richardson.h>
-#include <deal.II/lac/trilinos_solver.h>
-
 namespace RadProblem
 {
 using namespace dealii;

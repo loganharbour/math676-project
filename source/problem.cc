@@ -2,6 +2,8 @@
 
 #include <deal.II/numerics/data_out.h>
 
+#include <fstream>
+
 namespace RadProblem
 {
 using namespace dealii;
