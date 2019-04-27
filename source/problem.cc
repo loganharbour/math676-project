@@ -91,9 +91,17 @@ Problem<dim>::setup()
   if (!description.has_scattering() && description.has_reflecting_bcs() && max_ref_its == 1)
   {
     pcout << "\nProblem max_ref_its is set to 1, but there is no scattering and therefore\n"
-          << "the reflective boundary conditions will likely not converge It is being set\n"
-          << "by default to 10. Set it greater than 1 to escape this warning.\n\n";
-    max_ref_its = 10;
+          << "the reflective boundary conditions will likely not converge. max_ref_its is\n"
+          << " being set to 4. Set it greater than 1 to escape this warning.\n\n";
+    max_ref_its = 4;
+  }
+  if (description.has_scattering() && !enable_dsa && max_ref_its == 1)
+  {
+    pcout << "\nProblem max_ref_its is set to 1 because DSA can converge the reflecting\n"
+          << " boundary conditions. However, you have disabled DSA and therefore the"
+          << " reflecting boundary conditions will likely not converge. max_ref_its is\n"
+          << " being set to 4. Set it greater than 1 to escape this warning.\n\n";
+    max_ref_its = 4;
   }
 
   // Reflective BC iterations needs to be > 0
