@@ -39,22 +39,6 @@ SNProblem<dim>::SNProblem(Problem<dim> & problem)
 
 template <int dim>
 void
-SNProblem<dim>::setup()
-{
-  TimerOutput::Scope t(timer, "SNProblem setup");
-
-  // Setup InfoBox for MeshWorker
-  info_box.initialize_update_flags();
-  UpdateFlags update_flags = update_JxW_values | update_values | update_gradients;
-  info_box.add_update_flags_all(update_flags);
-  info_box.initialize(dof_handler.get_fe(), discretization.get_mapping());
-
-  // Pass the matrix and rhs to the assembler
-  assembler.initialize(system_matrix, system_rhs);
-}
-
-template <int dim>
-void
 SNProblem<dim>::assemble_solve_update()
 {
   for (unsigned int d = 0; d < aq.n_dir(); ++d)
@@ -112,6 +96,15 @@ void
 SNProblem<dim>::assemble(const unsigned int d)
 {
   TimerOutput::Scope t(timer, "SNProblem assembly");
+
+  MeshWorker::IntegrationInfoBox<dim> info_box;
+  info_box.initialize_update_flags();
+  UpdateFlags update_flags = update_JxW_values | update_values | update_gradients;
+  info_box.add_update_flags_all(update_flags);
+  info_box.initialize(dof_handler.get_fe(), discretization.get_mapping());
+
+  MeshWorker::Assembler::SystemSimple<LA::MPI::SparseMatrix, LA::MPI::Vector> assembler;
+  assembler.initialize(system_matrix, system_rhs);
 
   // Zero lhs and rhs before assembly
   system_matrix = 0;
@@ -349,9 +342,6 @@ SNProblem<dim>::update_for_reflective_bc(const unsigned int d, const bool before
 
 template SNProblem<2>::SNProblem(Problem<2> & problem);
 template SNProblem<3>::SNProblem(Problem<3> & problem);
-
-template void SNProblem<2>::setup();
-template void SNProblem<3>::setup();
 
 template void SNProblem<2>::assemble_solve_update();
 template void SNProblem<3>::assemble_solve_update();

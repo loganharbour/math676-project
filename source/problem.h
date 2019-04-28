@@ -28,7 +28,6 @@ public:
   MPI_Comm & get_comm() { return comm; }
   TimerOutput & get_timer() { return timer; }
   const Description<dim> & get_description() const { return description; }
-  Discretization<dim> & get_discretization() { return discretization; }
   const Discretization<dim> & get_discretization() const { return discretization; }
 
   LA::MPI::Vector & get_scalar_flux() { return scalar_flux; }

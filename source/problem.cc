@@ -156,8 +156,7 @@ Problem<dim>::setup()
     }     // cells
   }       // has reflecting bcs
 
-  // Setup the problems
-  sn.setup();
+  // Setup the dsa problem (initializes the non-changing LHS)
   if (enable_dsa && description.has_scattering())
     dsa.setup();
 }
