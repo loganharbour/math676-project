@@ -94,46 +94,47 @@ public:
     if (initialized)
       throw ExcMessage("The AngularQuadrature object has already been initialized");
 
-    if (dim == 2)
+    // Product Gauss-Legendre-Chebyshev quadrature for 2D and 3D
+    // Nomenclature for SN: N = number of polar levels (positive and negative)
+    // Azimuthally, N/2 directions in [0,pi/2]
+    // Hence, per octant: N/2 (polar level) times N/2 in azimuth = N^2/4
+    n_directions = (dim == 2 ? 1 : 2) * order * order;
+
+    QGauss<1> gq(order);
+    const auto & gq_JxW = gq.get_weights();
+    const auto & gq_points = gq.get_points();
+
+    // Azimuthal weights (Gauss-Chebyshev, thus uniform)
+    // wa = 2pi/2N = pi/N; normalize them right away
+    const double azi_weight = 1. / (2. * order);
+    // Sum of polar weights = 1 for the entire range in 3D, but 0.5 in 2D
+    const double polar_norm = (dim == 2 ? 0.5 : 1);
+
+    // Loop over polar levels (mu = cos(theta))
+    for (unsigned int ig = 0; ig < order; ++ig)
     {
-      n_directions = order * 2;
+      // In 2D, do not use the negative polar levels (which means mu > 0.5
+      // when the quadrature is defined over [0,1])
+      if (dim == 2 && gq_points[ig](0) <= 0.5)
+        continue;
 
-      directions.resize(n_directions);
-      weights.resize(n_directions, 1.0 / (double)n_directions);
+      const double cos_theta = gq_points[ig](0) * 2.0 - 1.0;
+      const double sin_theta = std::sqrt(1 - std::pow(cos_theta, 2));
 
-      for (unsigned int id = 0; id < n_directions; ++id)
+      // Loop over azimuthal angles (phi in (0,2pi)). 2N azimuthal angles
+      // phi = 2pi/2N*(i+1/2), i = 0, ..., 2N-1
+      for (unsigned int ic = 0; ic < 2 * order; ++ic)
       {
-        const double w = (2 * (double)(id + 1) - 1) * M_PI / (double)n_directions;
-        directions[id][0] = std::cos(w);
-        directions[id][1] = std::sin(w);
-      }
-    }
-    else if (dim == 3)
-    {
-      n_directions = order * 8;
-      const double n_per_quad = (double)order * 2;
+        const double phi = ((double)ic + 0.5) * M_PI / order;
 
-      QGauss<1> gq(order);
-      const auto & gq_JxW = gq.get_weights();
-      const auto & gq_points = gq.get_points();
+        Tensor<1, dim> direction;
+        direction[0] = std::cos(phi) * sin_theta;
+        direction[1] = std::sin(phi) * sin_theta;
+        if (dim == 3)
+          direction[2] = cos_theta;
+        directions.emplace_back(direction);
 
-      for (unsigned int ig = 0; ig < order; ++ig)
-      {
-        const double cos_phi = gq_points[ig](0) * 2.0 - 1.0;
-        const double sin_phi = std::sin(std::acos(cos_phi));
-
-        for (unsigned int ic = 0; ic < order * 2; ++ic)
-        {
-          const double w = (2 * (double)(ic + 1) - 1) * M_PI / n_per_quad;
-
-          Tensor<1, dim> direction;
-          direction[0] = std::cos(w) * sin_phi;
-          direction[1] = std::sin(w) * sin_phi;
-          direction[2] = cos_phi;
-          directions.emplace_back(direction);
-
-          weights.emplace_back(gq_JxW[ig] / n_per_quad);
-        }
+        weights.emplace_back(gq_JxW[ig] * azi_weight / polar_norm);
       }
     }
 
@@ -153,7 +154,8 @@ public:
           continue;
 
         // The direction that this direction reflects into
-        const Tensor<1, dim> dir_ref = directions[d_from] - 2 * (directions[d_from] * normal) * normal;
+        const Tensor<1, dim> dir_ref =
+            directions[d_from] - 2 * (directions[d_from] * normal) * normal;
 
         // Find the direction in the quadrature set most similar to dir_ref and store
         const unsigned int d_to = closest(dir_ref);
