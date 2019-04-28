@@ -30,9 +30,9 @@
 \usepackage{subcaption}
 \usepackage[]{algorithm2e}
 \usepackage{float}
-\usepackage[scaled]{beramono}
 \usepackage[T1]{fontenc}
 \usepackage{diagbox}
+\usepackage{stmaryrd}
 
 \setlength\parindent{0pt} % No indents
 \setlength{\parskip}{1em} % Paragraph skip
@@ -129,5 +129,84 @@ where $\psi_d^+$ is the upwind value of $\psi_d$, that is, the value from the si
 \begin{equation}
 	\label{eq:sn_fem_upwind}
 	\int_{\mathbb{T}_h} -\vo_d \cdot \nabla v_d\psi_d + \int_{\mathcal{E}_h^i} \psi_d^+ (\vo_d \cdot \vn) v_d + \int_{\mathbb{T}_h} \sigma_t \psi_d v_d - \int_{\mathbb{T}_h} \sigma_s \phi v_d = \int_{\mathbb{T}_h} qv_d\,.
-	\end{equation}
+\end{equation}
+
+\subsection{Source iteration}
+
+To converge the scattering source, cast Equation \eqref{eq:sn_equations_domain} with iterative index $\ell$ as
+\begin{equation}
+	\label{eq:si}
+\vo_d \cdot \nabla \psi_d^{(\ell + 1)} + \sigma_t \psi_d^{(\ell + 1)} = \sigma_s \phi^{(\ell)} + q\,,
+\end{equation}
+with $\psi_d^{(0)} = \phi^{(0)} = \vec{0}$. After solving each direction, $d$, for an iteration $\ell$ in Equation \eqref{eq:si}, update the scalar flux with
+\begin{equation}
+	\label{eq:si_update}
+	\psi^{(\ell + 1)} = \sum_{d = 1}^{N_\Omega} w_d \psi_d^{(\ell + 1)}\,.
+\end{equation}
+The process is then to be repeated until $\left\lVert\phi^{(\ell + 1)} - \phi^{(\ell)}\right\rVert_{L^2} < \tau$, where $\tau$ is some tolerance, typically $10^{-12}$. $\psi^{(\ell + 1)}$ is the particles that have scattered at most $\ell$ times. As $\sigma_s / \sigma_t \to 1$, particles scatter more and more before they are absorbed and the number of needed source iterations becomes significant.
+
+\subsection{Diffusion acceleration}
+
+Simple algebraic manipulations can show that the error in $\psi^{(\ell + 1)}$ satisfies the same transport equation with a source equal to $R^{(\ell + 1)} = \sigma_s (\psi^{(\ell + 1)} - \psi^{(\ell)})$. Furthermore, a Fourier analysis shows that the transport equation with the diffusion approximation attenuates the errors most poorly attenuated by the transport sweep. Therefore, we will cast a diffusion problem with the previously defined source as a preconditioner to source iteration.
+	
+Consider then the approximated error in $\psi^{(\ell + 1)}$, defined as $e^{(\ell + 1)}$. The corresponding diffusion problem is
+\begin{equation}
+	\label{eq:diffusion}
+	- \nabla \cdot D \nabla e^{(\ell + 1)} + \sigma_a e^{(\ell + 1)} = \sigma_s (\phi^{(\ell + 1)} - \phi^{(\ell)})\,,
+\end{equation}
+where $D$ is the diffusion coefficient, $D = 1 / 3 \sigma_t$.
+
+Cast Equation \eqref{eq:diffusion} in the same DG space with interior edges $\mathcal{E}_h^i$ and boundary edges $\mathcal{E}_h^b$ using a modified interior penalty method for the face terms to obtain
+\begin{multline}
+	\int_{\mathbb{T}_h} (D \nabla e^{(\ell + 1)} \cdot \nabla v + \sigma_a e^{(\ell + 1)} v) + \int_{\mathcal{E}_h^i} \left( \{\!\!\{ D \delta_n e^{(\ell + 1)} \}\!\!\} \llbracket v \rrbracket + \{\!\!\{ D \delta_n v \}\!\!\} \llbracket e^{(\ell + 1)} \rrbracket + \kappa \llbracket e^{(\ell + 1)} \rrbracket \llbracket v \rrbracket \right) \\
+	+ \int_{\mathcal{E}_h^b} \left( \kappa e^{(\ell + 1)} v - D v \delta_n e^{(\ell + 1)} - D e^{(\ell + 1)} \delta_n v \right) = \int_{\mathbb{T}_h} \sigma_s (\phi^{(\ell + 1)} - \phi^{(\ell)}) v\,,
+\end{multline}
+	where
+\[
+	\{\!\!\{ u \}\!\!\} \equiv \frac{u^+ + u^-}{2} \quad \text{and} \quad \llbracket u \rrbracket \equiv u^+ - u^-\,,
+\]
+in which the penalty coefficient is
+\[
+	\kappa = \begin{cases} 2 \left(\frac{D^+}{h^+_\bot} + \frac{D^-}{h^-_\bot}\right) & \text{for~interior~edges}\,, \\ 8 \frac{D^-}{h^-_\bot} & \text{for~boundary~edges}\,, \end{cases}
+\]
+and $h^\pm_\bot$ is a characteristic length of the cell in the direction orthogonal to the edge.
+
+\section{Code design and description}
+
+The bulk of the development resides in five classes, of which the \texttt{Problem} owns an instance of the other four. There are no public variables and the only access to private variables is through appropriately created getter methods that ensure const-correctness when possible. All primary system (LHS, RHS, solution) storage is done using the Deal.ii wrappers for the Trilinos vector and sparse matrix. A summary of these five classes follows in the next subsections.
+
+\subsection{\texttt{Description} class}
+
+The \texttt{Description} class stores all of the materials and boundary conditions in the problem. It does not need access to any of the other classes as this information is initialized once at setup by the \texttt{Problem} and only read from \texttt{SNProblem} and \texttt{DSAProblem} during assembly. Its \texttt{setup\_bcs()} and \texttt{setup\_materials()} methods require access to a set of boundary and material ids, respectively, in order to confirm that total material and boundary condition coverage is provided.
+
+The interface to materials and boundary conditions is provided to the other classes by the public methods \texttt{get\_bc()} and \texttt{get\_material()}, which return a reference to the custom \texttt{BC} and \texttt{Material} structs, respectively.
+
+\subsection{\texttt{Discretization} class}
+
+The \texttt{Discretization} class is storage for all that pertains to the triangulation and the degree of freedom handler. In specific, it generates the mesh (depending on user input), builds the degree of freedom handler, and distributes the degrees of freedom, builds the sparsity pattern, etc. It also builds the custom \texttt{AngularQuadrature} object, which contains the angular quadrature. The two classes that assemble and solve the problems, the \texttt{SNProblem} and \texttt{DSAProblem} have read-only access to some of the variables in the \texttt{Discretization}; namely the \texttt{DoFHandler}. Lastly, it also builds the listing of all boundary and material ids for use in verifying material and boundary condition coverage by the \texttt{Description}.
+
+\subsection{\texttt{Problem} class}
+
+As stated in the beginning of the section, the \texttt{Problem} stores instances of all of the classes that are discussed here. It stores the system matrix, system right hand side, solution vectors, and other data structures that are needed by both the \texttt{DSAProblem} and \texttt{SNProblem}. It stores the primary \texttt{solve()} method, which iterates and checks for convergence of the \texttt{DSAProblem} and \texttt{SNProblem} as needed. Lastly, it stores the \texttt{.vtu} output if requested via input.
+
+\subsection{\texttt{SNProblem} class}
+
+The \texttt{SNProblem} class assembles and solves the S$_N$ problem. It does not interface with the \texttt{DSAProblem} at all, purposely chosen in the design. Its public method available to the \texttt{Problem} is \texttt{assemble\_solve\_update()}, which assembles, solves, and updates the solution for all of the directions in the problem.
+
+The assembly and solve process for a specific direction are handled in the private methods \texttt{solve()} and \texttt{assemble()}. The assembly process is handled by the \texttt{MeshWorker::loop()}, which calls on the private methods \texttt{integrate\_cell()}, \texttt{integrate\_boundary()} and \texttt{integrate\_face()} to integrate cells, boundaries, and interior faces, respectively. It is important to note that setting the \texttt{MeshWorker::LoopControl} \texttt{faces\_to\_ghost} parameter to \texttt{both} disables the need for communicating ghosted values of the system matrix. This is because the faces that are on ghosted cells are assembled on both sides of the processor boundary. The \texttt{solve()} method utilizes the Trilinos GMRES solver and AMG preconditioner.
+
+\subsection{\texttt{DSAProblem} class}
+
+The \texttt{DSAProblem} class assembles and solves the diffusion problem utilized for acceleration of the S$_N$ source iterations. It does not interface with the \texttt{SNProblem} at all, purposely chosen in the design. Its public method available to the \texttt{Problem} is \texttt{assemble\_solve\_update()}, which assembles, solves, and updates the error estimate for the scalar flux error. 
+
+At initialization, \texttt{assemble\_initial()} is called, which utilizes the \texttt{MeshWorker::loop()} to build the non-changing system matrix for the diffusion problem into the sparse matrix \texttt{dsa\_matrix}. This matrix is then to be utilized at the beginning of every full assembly step in \texttt{assemble()} in order to reduce the need to re-build every iteration.
+
+The assembly and solve process for a single iteration are handled in the private methods \texttt{solve()} and \texttt{assemble()}. The assembly process is handled by the \texttt{MeshWorker::loop()}, which calls on the private methods \texttt{integrate\_cell()} and \texttt{integrate\_boundary()} to integrate cells and boundaries, respectively. The \texttt{solve()} method utilizes the Trilinos CG solver (the interior penalty method is symmetric) and AMG preconditioner.
+
+\section{Numerical results}
+
+\subsection{Diffusion acceleration}
+
+
 \end{document}
+
