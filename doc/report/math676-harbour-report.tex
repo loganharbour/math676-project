@@ -38,7 +38,13 @@
 \setlength{\parskip}{1em} % Paragraph skip
 
 \newcommand{\vx}{\mathbf{x}} % x vector
-\newcommand{\vy}{\mathbf{y}} % x vector
+\newcommand{\vo}{\mathbf{\Omega}} % omega vector
+\newcommand{\vn}{\mathbf{n}} % normal vector
+\newcommand{\spatial}{\mathcal{D}} % spatial domain representation
+\newcommand{\boundary}{\delta \mathcal{D}} % boundary representation
+\newcommand{\angular}{\mathcal{S}} % angular domain representation
+\DeclarePairedDelimiterX{\ainp}[2]{\langle}{\rangle}{#1, #2}
+\newcommand{\pinp}[2]{\left(#1,#2\right)}
 
 \newcommand{\pageTitle}{MATH 676 - Final Report}
 \newcommand{\pageAuthor}{Logan Harbour}
@@ -53,4 +59,75 @@
 
 \section{Introduction}
 
+\section{Methods}
+
+Begin with the spatial domain $\spatial \in \mathbb{R}^2$ in which $\boundary$ is on the boundary of $\spatial$. The set of propagation directions $\angular$ is the unit disk.
+
+The linear Boltzmann equation for one-group transport is
+\begin{subequations}
+	\label{eq:boltzmann}
+	\begin{equation}
+	\vo \cdot \nabla \Psi(\vo, \vx) + \sigma_t(\vx) \Psi(\vo, \vx) - \sigma_s(\vx) \Phi(\vx) = q(\vx)\,, \qquad \forall (\vo, \vx) \in \angular \times \spatial\,,
+	\end{equation}
+	\begin{equation}
+	\Phi(\vo, \vx) = \Phi^\text{inc} (\vo, \vx)\,, \qquad \forall(\vo, \vx) \in \angular \times \boundary\,,~ \vo \cdot \vn(\vx) < 0\,,
+	\end{equation}
+\end{subequations}
+where $\Phi$ is the scalar flux, defined by
+\[
+\Phi = \frac{1}{2\pi} \int_{\angular} \Phi(\vo, \vx) d\Omega\,.
+\]
+
+Define $\mathbb{T}_h$ as the set of all active cells of the triangulation for $\spatial$ and $\mathbb{F}_h$ as the set of all active interior faces and define a discontinuous approximation space for the scalar flux based on the mesh $\mathbb{T}_h$ as
+\begin{equation}
+	V_h \in \{ v \in L^2(\spatial)~|~\forall K \in \mathbb{T}_h\,, v|_K \in P_K\}\,,
+\end{equation}
+where the finite-dimensional space $P_K$ is assumed to contain $\mathbb{P}_k$, the set of polynomials of degree at most $k$. Denote interior edges as $\mathcal{E}_h^i$ and boundary edges as $\mathcal{E}_h^b$. 
+
+\subsection{S$_N$ discretization}
+
+Introduce the S$_N$ discretization, which replaces the angular flux with a discrete angular flux, as
+\begin{equation}
+\label{eq:sn_discretization}
+\psi(\vx) = [\psi_1(\vx), \psi_2(\vx), \ldots \psi_{N_\Omega}(\vx)]^T\,.
+\end{equation}
+We then introduce the quadrature rule $\{ (\vo_d, \omega_d), d = 1, \ldots, N_\Omega\}$ where $\sum_d \omega_d = 1$. With said quadrature rule, we have 
+\[
+\int_\angular f(\vo, \vx) d\Omega \approx \sum_{d = 1}^{N_\Omega} w_d f(\vo_d, \vx)\,.
+\]
+This discretization allows us to write the system in Equation \eqref{eq:boltzmann} as
+\begin{subequations}
+	\label{eq:sn_equations}
+	\begin{equation}
+	\label{eq:sn_equations_domain}
+	\vo_d \cdot \nabla \psi_d(\vx) + \sigma_t(\vx) \psi_d(\vx) - \sigma_s(\vx) \phi(\vx) = q(\vx)\,, \qquad \forall \vx \in \spatial
+	\end{equation}
+	\begin{equation}
+	\label{eq:sn_equations_boundary}
+	\psi_d(\vx) = \Psi^\text{inc}_d (\vx)\,, \qquad \forall \vx \in \boundary\,,~ \vo_d \cdot \vn(\vx) < 0\,, 
+	\end{equation}
+\end{subequations}
+where the discrete scalar flux, $\phi$, is
+\[
+	\phi(\vx) =  \sum_{d = 1}^{N_\Omega} w_j \psi_j(\vx)\,.
+\]
+
+To obtain the weak form, multiply Equation \eqref{eq:sn_equations_boundary} by the test function $v_d \in V_h$ and integrate as
+\begin{equation}
+	\int_{\mathbb{T}_h} \vo_d \cdot \nabla \psi_d v_d + \int_{\mathbb{T}_h} \sigma_t \psi_d v_d - \int_{\mathbb{T}_h} \sigma_s \phi v_d = \int_{\mathbb{T}_h} qv_d\,, \quad d = 1, \ldots, N_\Omega\,,
+\end{equation}
+and integrate the first term by parts to obtain
+\begin{equation}
+	\label{eq:sn_fem_parts}
+	\int_{\mathbb{T}_h} -\vo_d \cdot \nabla v_d\psi_d + \int_{\mathcal{E}_h^i} \psi_d (\vo_d \cdot \vn) v_d + \int_{\mathbb{T}_h} \sigma_t \psi_d v_d - \int_{\mathbb{T}_h} \sigma_s \phi v_d = \int_{\mathbb{T}_h} qv_d\,,
+\end{equation}
+where $\vn$ is the outward normal. Note that the surface integration in Equation \eqref{eq:sn_fem_parts} is double-valued due to the discontinuous approximation. We introduce the upwind approximation
+\begin{equation}
+	\psi_d \vo_d \cdot \vn = \psi^+_d \vo_d \cdot \vn\,,
+\end{equation}
+where $\psi_d^+$ is the upwind value of $\psi_d$, that is, the value from the side of the face in which $\vo \cdot \vn \geq 0$. The weak form is then defined as
+\begin{equation}
+	\label{eq:sn_fem_upwind}
+	\int_{\mathbb{T}_h} -\vo_d \cdot \nabla v_d\psi_d + \int_{\mathcal{E}_h^i} \psi_d^+ (\vo_d \cdot \vn) v_d + \int_{\mathbb{T}_h} \sigma_t \psi_d v_d - \int_{\mathbb{T}_h} \sigma_s \phi v_d = \int_{\mathbb{T}_h} qv_d\,.
+	\end{equation}
 \end{document}
