@@ -101,7 +101,10 @@ private:
 
   /// Whether or not acceleration using dJ is enabled for reflective bcs
   bool reflective_bc_acceleration = true;
-  
+
+  /// Factor to multiply c in the penalty coefficient by
+  double kappa_c_factor = 1;
+
   /// Whether or not to enable detailed solver output
   bool detailed_solver_output = false;
   /// Relative tolerance

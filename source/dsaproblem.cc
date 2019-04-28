@@ -34,6 +34,9 @@ DSAProblem<dim>::DSAProblem(Problem<dim> & problem)
   // Whether or not reflective bc acceleration is enabled (default: true)
   add_parameter("reflective_bc_acceleration", reflective_bc_acceleration);
 
+  // Factor to multiply the penalty coefficient (default: 1)
+  add_parameter("kappa_c_factor", kappa_c_factor);
+
   // Whether or not to enable detailed solver output (default: false)
   add_parameter("detailed_solver_output", detailed_solver_output);
   // Relative tolerance (default: 1e-12)
@@ -47,6 +50,10 @@ void
 DSAProblem<dim>::setup()
 {
   TimerOutput::Scope t(timer, "DSAProblem setup");
+
+  // Warn if kappa_c_factor < 1
+  if (kappa_c_factor < 1)
+    pcout << "Warning: kappa_c_factor in DSAProblem should likely be >= 1!\n\n";
 
   // Initialize constant system storage
   dsa_matrix.reinit(discretization.get_locally_owned_dofs(),
@@ -272,8 +279,8 @@ DSAProblem<dim>::integrate_face_initial(MeshWorker::DoFInfo<dim> & dinfo1,
   const unsigned int deg1 = fe1.get_fe().tensor_degree();
   const unsigned int deg2 = fe2.get_fe().tensor_degree();
   // Penalty coefficient
-  const double c1 = 4 * deg1 * (deg1 + 1);
-  const double c2 = 4 * deg2 * (deg2 + 1);
+  const double c1 = kappa_c_factor * 4 * deg1 * (deg1 + 1);
+  const double c2 = kappa_c_factor * 4 * deg2 * (deg2 + 1);
   const double kappa = std::fmax(0.5 * (c1 * D1 / h1 + c2 * D2 / h2), 0.25);
 
   FullMatrix<double> & v1u1 = dinfo1.matrix(0, false).matrix;
@@ -328,7 +335,7 @@ DSAProblem<dim>::integrate_boundary_initial(MeshWorker::DoFInfo<dim> & dinfo,
     // Polynomial degrees on the face
     const unsigned int deg = info.fe_values().get_fe().tensor_degree();
     // Penalty coefficient
-    const double c = 4 * deg * (deg + 1);
+    const double c = kappa_c_factor * 4 * deg * (deg + 1);
     const double kappa = std::fmax(c * D / h, 0.25);
 
     // "factor" used in nitsche_matrix multiplies the entire term, therefore we
