@@ -94,48 +94,87 @@ public:
     if (initialized)
       throw ExcMessage("The AngularQuadrature object has already been initialized");
 
+    // Product Gauss-Legendre-Chebyshev quadrature for 2D and 3D
+    // Nomenclature: SN: N=number of polar levels (positive and negative)
+    // Azimuthally, N/2 direction in [0,pi/2]
+    // Hence, per octant: N/2 (polar level) times N/2 in azimuth = N^2/4
     if (dim == 2)
+      n_directions = order * order;
+    else if (dim==3)
+      n_directions = 2 * order * order;
+    std::cout << "nd dir = " << n_directions << std::endl;
+
+    directions.resize(n_directions);
+    weights.resize(n_directions);
+
+    QGauss<1> gq(order);
+    const auto & gq_JxW = gq.get_weights();
+    const auto & gq_points = gq.get_points();
+
+    double sum_weights = 0.;
+    double sum_polar_weights = 0.;
+    for (unsigned int ig = 0; ig < order; ++ig)
+       sum_polar_weights += gq_JxW[ig];
+    std::cout << "sum polar weights " << sum_polar_weights << std::endl;
+    /* this is not working. why ??
+    std::cout << "sum polar weights = "
+              << std::accumulate(gq_JxW.begin(), gq_JxW.end(), 0) << std::endl;
+    */
+
+    // azimuthal weights (Gauss-Chebyshev, thus uniform)
+    // wa = 2pi/2N = pi/N. We normlaize them right away:
+    const double azi_weight = 1. / ( 2. * order );
+    // furthermore, sum of polar weights = 1 for the entire range
+    // however, if in 2D, their sum is only equal to 0.5
+    double polar_norm = 1.;
+    if (dim==2)
+      polar_norm = 0.5;
+
+    unsigned int d=0;
+    // loop over polar levels (mu=cos(theta))
+    for (unsigned int ig = 0; ig < order; ++ig)
     {
-      n_directions = order * 2;
-
-      directions.resize(n_directions);
-      weights.resize(n_directions, 1.0 / (double)n_directions);
-
-      for (unsigned int id = 0; id < n_directions; ++id)
+      // in 2D, we do not use the negative polar levels (which means mu>0.5
+      // when the quadrature is defined over [0,1])
+      if ( (dim==3) || ((dim==2) && (gq_points[ig](0)>0.5)) )
       {
-        const double w = (2 * (double)(id + 1) - 1) * M_PI / (double)n_directions;
-        directions[id][0] = std::cos(w);
-        directions[id][1] = std::sin(w);
-      }
-    }
-    else if (dim == 3)
-    {
-      n_directions = order * 8;
-      const double n_per_quad = (double)order * 2;
+        const double cos_theta = gq_points[ig](0) * 2.0 - 1.0;
+        const double sin_theta = std::sqrt(1-std::pow(cos_theta,2));
 
-      QGauss<1> gq(order);
-      const auto & gq_JxW = gq.get_weights();
-      const auto & gq_points = gq.get_points();
-
-      for (unsigned int ig = 0; ig < order; ++ig)
-      {
-        const double cos_phi = gq_points[ig](0) * 2.0 - 1.0;
-        const double sin_phi = std::sin(std::acos(cos_phi));
-
-        for (unsigned int ic = 0; ic < order * 2; ++ic)
+        // loop over azimuthal angles (phi in (0,2pi). 2N azimuthal angles
+        // phi = 2pi/2N*(i+1/2), i=0,...,2N-1
+        for (unsigned int ic = 0; ic < 2 * order; ++ic)
         {
-          const double w = (2 * (double)(ic + 1) - 1) * M_PI / n_per_quad;
+          const double phi = ( (double)ic + 0.5 ) * M_PI / order;
 
           Tensor<1, dim> direction;
-          direction[0] = std::cos(w) * sin_phi;
-          direction[1] = std::sin(w) * sin_phi;
-          direction[2] = cos_phi;
+          direction[0] = std::cos(phi) * sin_theta;
+          direction[1] = std::sin(phi) * sin_theta;
+          if (dim==3)
+            direction[2] = cos_theta;
           directions.emplace_back(direction);
 
-          weights.emplace_back(gq_JxW[ig] / n_per_quad);
+          weights.emplace_back(gq_JxW[ig] * azi_weight);
+          // printout
+          sum_weights += gq_JxW[ig] / polar_norm * azi_weight;
+          std::cout << "d= " << d << " ig=" << ig << " ic=" << ic << " , "
+                    << cos_theta << " , " << sin_theta << " , " << azi_weight
+                    << " , " << direction[0] << " , " << direction[1] << std::endl;
         }
       }
+      ++d;
     }
+    // printout
+    for (unsigned int d =0; d < n_directions; ++d)
+    {
+      std::cout << directions[d][0] << " , " << directions[d][1];
+      if (dim==3)
+        std::cout << " , " << directions[d][2];
+      std::cout << " , " << weights[d] << std::endl;
+    }
+    std::cout << "sum weights = "
+              << std::accumulate(weights.begin(), weights.end(), 0)
+              << " other sum = " << sum_weights << std::endl;
 
     // Initialize reflected directions (dim * 2 possible reflective normals)
     reflect_to_vector.resize(dim * 2);
