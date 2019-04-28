@@ -207,6 +207,14 @@ The assembly and solve process for a single iteration are handled in the private
 
 \subsection{Diffusion acceleration}
 
+To verify the diffusion acceleration implementation, a problem was considered with increasing scattering ratio $c = \sigma_s / \sigma_t$. The spatial domain is $[0, 10]^2$, discretized into $16^2$ elements with S$_{10}$ angular quadrature. The cross sections are $\sigma_a + \sigma_s = \sigma_t = 100$ with a uniform volumetric source of 1. The input and run script are located in \texttt{examples/dsa\_convergence}. The $L_2$ norm of the difference in scalar flux was plotted with varying $c$, as seen below in Figure \ref{fig:dsa}.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.9\linewidth]{images/dsa_residuals}
+	\caption{Source iteration norms with and without diffusion acceleration.}
+	\label{fig:dsa}
+\end{figure}
 
 \end{document}
 
