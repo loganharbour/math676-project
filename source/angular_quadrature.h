@@ -12,7 +12,7 @@ namespace RadProblem
 using namespace dealii;
 
 // Enum for the hat directions, i.e., (1, 0, 0) = X, (0, 1, 0) = Y, ...
-enum HatDirection
+enum Hat
 {
   X = 0,
   NEG_X = 1,
@@ -22,30 +22,32 @@ enum HatDirection
   NEG_Z = 5
 };
 
-// Get the HatDirection from a Tensor<1, dim>
+// Get the Hat from a Tensor<1, dim>
 template <int dim>
-static HatDirection
+static Hat
 get_hat_direction(const Tensor<1, dim> & v, const double eps = 1e-12)
 {
   const Tensor<1, dim> unit_v = v / v.norm();
-  // Doesn't currently check if the Tensor has zeros in the other dimension
-  if (-std::abs(unit_v[0]) + 1 < eps)
-    return unit_v[0] > 0 ? HatDirection::X : HatDirection::NEG_X;
-  else if (-std::abs(unit_v[1]) + 1 < eps)
-    return unit_v[1] > 0 ? HatDirection::Y : HatDirection::NEG_Y;
-  else if (dim == 3 && -std::abs(unit_v[2]) + 1 < eps)
-    return unit_v[2] > 0 ? HatDirection::Z : HatDirection::NEG_Z;
+  if (-std::abs(unit_v[0]) + 1 < eps && std::abs(unit_v[1]) < eps &&
+      !(dim == 3 && std::abs(unit_v[2]) < eps))
+    return unit_v[0] > 0 ? Hat::X : Hat::NEG_X;
+  else if (-std::abs(unit_v[1]) + 1 < eps && std::abs(unit_v[0]) < eps &&
+           !(dim == 3 && std::abs(unit_v[2]) < eps))
+    return unit_v[1] > 0 ? Hat::Y : Hat::NEG_Y;
+  else if (dim == 3 && -std::abs(unit_v[2]) + 1 < eps && std::abs(unit_v[0]) < eps &&
+           std::abs(unit_v[1]) < eps)
+    return unit_v[2] > 0 ? Hat::Z : Hat::NEG_Z;
   else
     throw ExcMessage("Couldn't find hat direction");
 }
 
-// Get the Tensor<1, dim> from a given HatDirection
+// Get the Tensor<1, dim> from a given Hat
 template <int dim>
 static Tensor<1, dim>
-get_hat_direction(const HatDirection hat_direction)
+get_hat_direction(const Hat hat)
 {
   Tensor<1, dim> v;
-  switch (hat_direction)
+  switch (hat)
   {
     case X:
       v[0] = 1;
@@ -65,6 +67,8 @@ get_hat_direction(const HatDirection hat_direction)
     case NEG_Z:
       v[2] = -1;
       break;
+    default:
+      throw ExcMessage("Unknown Hat in get_hat_direction");
   }
 
   return v;
@@ -87,7 +91,7 @@ public:
     // Hence, per octant: N/2 (polar level) times N/2 in azimuth = N^2/4
     n_directions = (dim == 2 ? 1 : 2) * order * order;
 
-    QGauss<1> gq(order);
+    const QGauss<1> gq(order);
     const auto & gq_JxW = gq.get_weights();
     const auto & gq_points = gq.get_points();
 
@@ -107,6 +111,7 @@ public:
 
       const double cos_theta = gq_points[ig](0) * 2.0 - 1.0;
       const double sin_theta = std::sqrt(1 - std::pow(cos_theta, 2));
+      const double weight = gq_JxW[ig] * azi_weight / polar_norm;
 
       // Loop over azimuthal angles (phi in (0,2pi)). 2N azimuthal angles
       // phi = 2pi/2N*(i+1/2), i = 0, ..., 2N-1
@@ -119,9 +124,10 @@ public:
         direction[1] = std::sin(phi) * sin_theta;
         if (dim == 3)
           direction[2] = cos_theta;
-        directions.emplace_back(direction);
 
-        weights.emplace_back(gq_JxW[ig] * azi_weight / polar_norm);
+        // Insert into the quadrature set
+        directions.emplace_back(direction);
+        weights.emplace_back(weight);
       }
     }
 
@@ -130,8 +136,8 @@ public:
     for (unsigned int hat_i = 0; hat_i < dim * 2; ++hat_i)
     {
       // This normal direction
-      const HatDirection hat = (HatDirection)hat_i;
-      const Tensor<1, dim> normal = get_hat_direction<dim>((HatDirection)hat_i);
+      const Hat hat = (Hat)hat_i;
+      const Tensor<1, dim> normal = get_hat_direction<dim>((Hat)hat_i);
 
       // Check every outgoing direction to store what direction it goes into
       for (unsigned int d_from = 0; d_from < n_directions; ++d_from)
@@ -152,7 +158,7 @@ public:
   }
 
   // Get the direction that direction d_from reflects into on the surface defined by normal
-  unsigned int reflect_to(const HatDirection hat, const unsigned int d_from) const
+  unsigned int reflect_to(const Hat hat, const unsigned int d_from) const
   {
     return reflect_to_vector[hat].at(d_from);
   }
@@ -160,12 +166,20 @@ public:
   // Get the direction that is closest to direction
   unsigned int closest(const Tensor<1, dim> & direction) const
   {
+    // Normalize
     const Tensor<1, dim> unit_direction = direction / direction.norm();
-    unsigned int d_closest;
+
+    // Start with the maximum value
     double norm_min = std::numeric_limits<double>::max();
+    unsigned int d_closest;
+
+    // Check every direction
     for (unsigned int d = 0; d < n_directions; ++d)
     {
-      double norm = (directions[d] - unit_direction).norm();
+      // Check the norm of the difference between this quadrature direction and
+      // the direction that is being checked
+      const double norm = (directions[d] - unit_direction).norm();
+      // Seek the smallest norm of the difference
       if (norm < norm_min)
       {
         d_closest = d;

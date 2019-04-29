@@ -26,7 +26,9 @@ public:
   void run();
 
   MPI_Comm & get_comm() { return comm; }
+  ConditionalOStream & get_pcout() { return pcout; }
   TimerOutput & get_timer() { return timer; }
+
   const Description<dim> & get_description() const { return description; }
   const Discretization<dim> & get_discretization() const { return discretization; }
 
@@ -38,16 +40,13 @@ public:
   LA::MPI::SparseMatrix & get_system_matrix() { return system_matrix; }
   LA::MPI::Vector & get_system_rhs() { return system_rhs; }
   LA::MPI::Vector & get_system_solution() { return system_solution; }
+
   const std::map<types::global_dof_index, double> & get_reflective_dJ() const
   {
     return reflective_dJ;
   }
   std::map<types::global_dof_index, double> & get_reflective_dJ() { return reflective_dJ; }
-  std::map<types::global_dof_index, HatDirection> & get_reflective_dof_normals()
-  {
-    return reflective_dof_normals;
-  };
-  const std::map<types::global_dof_index, HatDirection> & get_reflective_dof_normals() const
+  const std::map<types::global_dof_index, Hat> & get_reflective_dof_normals() const
   {
     return reflective_dof_normals;
   };
@@ -55,8 +54,6 @@ public:
   {
     return reflective_incoming_flux;
   }
-
-  ConditionalOStream & get_pcout() { return pcout; }
 
   template <typename T>
   static void saveVector(const std::vector<T> & v, const std::string filename)
@@ -109,11 +106,12 @@ private:
   /// Finite element representation of the angular flux (not stored by default)
   std::vector<LA::MPI::Vector> angular_flux;
 
-  /// The unit normal for each reflective boundary
-  std::map<types::global_dof_index, HatDirection> reflective_dof_normals;
-  /// Incoming angular flux on the reflective boundaries
+  /// Map from a degree of freedom on a reflective boundary to its normal Hat
+  std::map<types::global_dof_index, Hat> reflective_dof_normals;
+  /// Vector (entry for each direction) of maps from a degree of freedom on a
+  /// reflective boundary to its corresponding incoming reflective angular flux
   std::vector<std::map<types::global_dof_index, double>> reflective_incoming_flux;
-  /// Net current on the reflective boundaries
+  /// Map from a degree of freedom on a reflective boundary to its net current
   std::map<types::global_dof_index, double> reflective_dJ;
 
   /// System storage

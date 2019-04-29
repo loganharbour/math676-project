@@ -142,7 +142,7 @@ Problem<dim>::setup()
         // Outward-facing unit normal for this face
         fe.reinit(cell, f);
         const Tensor<1, dim> normal = fe.normal_vector(0);
-        const HatDirection normal_hat = get_hat_direction<dim>(normal);
+        const Hat normal_hat = get_hat_direction<dim>(normal);
 
         // Dofs for this face
         cell->get_dof_indices(dofs);

@@ -324,7 +324,7 @@ SNProblem<dim>::update_for_reflective_bc(const unsigned int d, const bool before
   for (const auto & dof_normal_pair : reflective_dof_normals)
   {
     const unsigned int dof = dof_normal_pair.first;
-    const HatDirection normal_hat = dof_normal_pair.second;
+    const Hat normal_hat = dof_normal_pair.second;
     const Tensor<1, dim> normal = get_hat_direction<dim>(normal_hat);
     const double dir_dot_n = aq.dir(d) * normal;
 

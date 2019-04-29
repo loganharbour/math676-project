@@ -37,7 +37,7 @@ Description<dim>::setup(const Discretization<dim> & discretization)
 
 template <int dim>
 void
-Description<dim>::setup_materials(const std::set<unsigned int> & mesh_material_ids)
+Description<dim>::setup_materials(const std::set<dealii::types::material_id> & mesh_material_ids)
 {
   // Make sure all material vectors are the same size
   const auto & double_inputs = {material_sigma_t, material_sigma_s, material_src};
@@ -71,7 +71,7 @@ Description<dim>::setup_materials(const std::set<unsigned int> & mesh_material_i
 
 template <int dim>
 void
-Description<dim>::setup_bcs(const std::set<unsigned int> & mesh_boundary_ids,
+Description<dim>::setup_bcs(const std::set<dealii::types::boundary_id> & mesh_boundary_ids,
                             const AngularQuadrature<dim> & aq)
 {
   fill_bcs(BCTypes::Isotropic, isotropic_boundary_ids, &isotropic_boundary_fluxes);
@@ -92,7 +92,7 @@ Description<dim>::setup_bcs(const std::set<unsigned int> & mesh_boundary_ids,
 template <int dim>
 void
 Description<dim>::fill_bcs(const BCTypes type,
-                           const std::vector<unsigned int> & ids,
+                           const std::vector<dealii::types::boundary_id> & ids,
                            const std::vector<double> * values,
                            const std::vector<double> * directions,
                            const AngularQuadrature<dim> * aq)
@@ -138,7 +138,7 @@ Description<dim>::fill_bcs(const BCTypes type,
 
 template <int dim>
 const BC &
-Description<dim>::get_bc(const unsigned int boundary_id) const
+Description<dim>::get_bc(const dealii::types::boundary_id boundary_id) const
 {
   const auto search = bcs.find(boundary_id);
   Assert(search != bcs.end(), ExcMessage("Boundary id not found in BC map"));
@@ -147,7 +147,7 @@ Description<dim>::get_bc(const unsigned int boundary_id) const
 
 template <int dim>
 const Material &
-Description<dim>::get_material(const unsigned int material_id) const
+Description<dim>::get_material(const dealii::types::material_id material_id) const
 {
   const auto search = materials.find(material_id);
   Assert(search != materials.end(), ExcMessage("Material id not found in material map"));
@@ -160,10 +160,12 @@ template Description<3>::Description();
 template void Description<2>::setup(const Discretization<2> & discretization);
 template void Description<3>::setup(const Discretization<3> & discretization);
 
-template const BC & Description<2>::get_bc(const unsigned int boundary_id) const;
-template const BC & Description<3>::get_bc(const unsigned int boundary_id) const;
+template const BC & Description<2>::get_bc(const dealii::types::boundary_id boundary_id) const;
+template const BC & Description<3>::get_bc(const dealii::types::boundary_id boundary_id) const;
 
-template const Material & Description<2>::get_material(const unsigned int material_id) const;
-template const Material & Description<3>::get_material(const unsigned int material_id) const;
+template const Material &
+Description<2>::get_material(const dealii::types::material_id material_id) const;
+template const Material &
+Description<3>::get_material(const dealii::types::material_id material_id) const;
 
 } // namespace RadProblem

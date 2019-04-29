@@ -21,16 +21,15 @@ class Discretization : public ParameterAcceptor
 public:
   Discretization(MPI_Comm & comm, TimerOutput & timer);
 
-  void renumber_dofs(const unsigned int h);
   void setup();
 
   const AngularQuadrature<dim> & get_aq() const { return aq; }
-  const std::set<unsigned int> & get_boundary_ids() const { return boundary_ids; }
+  const std::set<types::boundary_id> & get_boundary_ids() const { return boundary_ids; }
   const DoFHandler<dim> & get_dof_handler() const { return dof_handler; }
   const DynamicSparsityPattern & get_sparsity_pattern() const { return dsp; }
 
   const MappingQ1<dim> & get_mapping() const { return mapping; }
-  const std::set<unsigned int> & get_material_ids() const { return material_ids; }
+  const std::set<types::material_id> & get_material_ids() const { return material_ids; }
   const IndexSet & get_locally_owned_dofs() const { return locally_owned_dofs; }
   const parallel::distributed::Triangulation<dim> & get_triangulation() const
   {
@@ -38,6 +37,7 @@ public:
   }
 
 private:
+  /// Generate the mesh
   void generate_mesh();
 
   /// MPI communicator
@@ -59,13 +59,13 @@ private:
   AngularQuadrature<dim> aq;
 
   /// Boundary ids that exist on the local mesh
-  std::set<unsigned int> local_boundary_ids;
+  std::set<types::boundary_id> local_boundary_ids;
   /// Boundary ids that exist on the entire mesh
-  std::set<unsigned int> boundary_ids;
+  std::set<types::boundary_id> boundary_ids;
   /// Material ids that exist on the local mesh
-  std::set<unsigned int> local_material_ids;
+  std::set<types::material_id> local_material_ids;
   /// Material ids that exist on the entire mesh
-  std::set<unsigned int> material_ids;
+  std::set<types::material_id> material_ids;
 
   /// Angular quadrature order
   unsigned int aq_order = 10;

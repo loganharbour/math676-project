@@ -84,11 +84,12 @@ private:
   /// Access the old scalar flux DGFEM solution in the Problem
   const LA::MPI::Vector & scalar_flux_old;
 
-  /// The unit normal for each reflective boundary
-  const std::map<types::global_dof_index, HatDirection> & reflective_dof_normals;
-  /// Incoming angular flux on the reflective boundaries
+  /// Map from a degree of freedom on a reflective boundary to its normal Hat
+  const std::map<types::global_dof_index, Hat> & reflective_dof_normals;
+  /// Vector (entry for each direction) of maps from a degree of freedom on a
+  /// reflective boundary to its corresponding incoming reflective angular flux
   std::vector<std::map<types::global_dof_index, double>> & reflective_incoming_flux;
-  /// Net current on the reflective boundaries
+  /// Map from a degree of freedom on a reflective boundary to its net current
   const std::map<types::global_dof_index, double> & reflective_dJ;
 
   /// System storage owned by the Problem
