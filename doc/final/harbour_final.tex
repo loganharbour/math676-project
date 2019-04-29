@@ -87,10 +87,10 @@
 	\begin{block}{}
 		\begin{itemize}
 			\item My Ph.D. work involves various acceleration techniques for method of characteristics (MOC) radiation transport
-			\item As an introduction to previous methods, the push for this work is to investigate previously-developed acceleration techniques for S$_N$ radiation transport (as an introduction to my future works)
-			\item With this, the first goal was to develop a simple S$_N$ radiation transport code to be accelerated
-			\item The second goal was then to utilize a common diffusion-acceleration technique to accelerate said S$_N$ code
-			\item Additional goals were added as I was able to complete the first two goals early
+			\item Many acceleration methods for discrete ordinates (S$_N$) transport are similar to those in MOC transport
+			\item Therefore, the overarching goal for this course is to investigate and implement a common acceleration method for S$_N$ transport utilizing Deal.ii
+			\item In specific, the focus is on diffusion synthetic acceleration (DSA) of source iteration
+			\item Additional goals were added as I was able to complete the primary goal early
 		\end{itemize}
 	\end{block}
 \end{frame}
@@ -107,7 +107,7 @@
 	\begin{multline}
 		\sum_{K \in \mathbb{T}_h} \Big[ \pinp{-\vo_d \cdot \nabla v_d}{\psi_d}_K + \pinp{\psi_d^+ \vo_d \cdot \vn}{v_d}_{\delta K} + \pinp{\sigma_t \psi_d}{v_d}_K  \\ - \pinp{\sigma_s \phi}{v_d}_K = \pinp{q}{v_d}_K\Big]\,,
 	\end{multline}
-	where $\phi$ is the \textit{scalar flux}, $\phi = \frac{1}{2\pi} \sum_d^{N_\Omega} \omega_d \psi_d$, and $\psi_d^+$ is the upwind value of $\psi_d$ (the value from the side of the face in which $\vo \cdot \vn \geq 0$).
+	where $\phi$ is the \textit{scalar flux}, $\phi = \sum_d^{N_\Omega} \omega_d \psi_d$, and $\psi_d^+$ is the upwind value of $\psi_d$ (the value from the side of the face in which $\vo \cdot \vn \geq 0$).
 \end{frame}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
