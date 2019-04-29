@@ -8,6 +8,7 @@ subsection Description
   set material_sigma_s          = 99
   set material_sigma_t          = 100
   set material_src              = 1
+  # set vacuum_boundary_ids       = 0, 2
   set isotropic_boundary_ids    = 0, 2
   set isotropic_boundary_fluxes = 1, 1
   set reflective_boundary_ids   = 1, 3
@@ -15,7 +16,7 @@ end
 
 
 subsection Discretization
-  set aq_order           = 8
+  set aq_order           = 2
   set uniform_refinement = 5
   set hypercube_bounds   = 0, 10
 end
