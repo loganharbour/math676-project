@@ -88,7 +88,7 @@ DSAProblem<dim>::assemble_solve_update()
     {
       const auto dir = aq.dir(d);
       // Loop through each entry for the incoming angular flux for direction d
-      // and update
+      // and update with the DSA correction
       for (auto & dof_value_pair : reflective_incoming_flux[d])
       {
         const unsigned int dof = dof_value_pair.first;
@@ -230,6 +230,8 @@ DSAProblem<dim>::integrate_cell(MeshWorker::DoFInfo<dim> & dinfo,
       scalar_flux_change[q] += fe.shape_value(i, q) * change;
   }
 
+  // Integration of sigma_s * FEM representation of the change in the scalar flux
+  // in the cell
   LocalIntegrators::L2::L2(local_vector, fe, scalar_flux_change, sigma_s);
 }
 
@@ -247,6 +249,9 @@ DSAProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
   const auto & fe = dof_handler.get_fe();
   const FEValuesBase<dim> & fe_v = info.fe_values();
   const std::vector<double> & JxW = fe_v.get_JxW_values();
+
+  // Integration of the FEM representation of dJ on the boundary if it is a
+  // reflecting boundary only
   for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
     if (fe.has_support_on_face(i, dinfo.face_number))
     {
@@ -265,7 +270,9 @@ DSAProblem<dim>::integrate_cell_initial(MeshWorker::DoFInfo<dim> & dinfo,
   FullMatrix<double> & local_matrix = dinfo.matrix(0).matrix;
   const auto & material = description.get_material(dinfo.cell->material_id());
 
+  // Mass matrix * sigma_a on each cell
   LocalIntegrators::L2::mass_matrix(local_matrix, fe, material.sigma_a);
+  // D * the Laplacian on each cell
   LocalIntegrators::Laplace::cell_matrix(local_matrix, fe, material.D);
 }
 

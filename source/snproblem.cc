@@ -166,6 +166,7 @@ SNProblem<dim>::integrate_cell(MeshWorker::DoFInfo<dim> & dinfo,
   const bool has_scattering = material.sigma_s != 0;
 
   // Compute old scalar flux at each quadrature point for scattering source
+  // (no need to compute without scattering)
   std::vector<double> scattering_source;
   if (has_scattering)
   {
@@ -247,6 +248,8 @@ SNProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
     Vector<double> & local_vector = dinfo.vector(0).block(0);
     const std::vector<double> & JxW = fe_v.get_JxW_values();
 
+    // Integration of -dir_dot_n * FEM representation of the boundary values on
+    // reflective, isotropic, or incident (into this direction) boundaries
     for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
       for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
         if (fe.has_support_on_face(i, dinfo.face_number))
@@ -299,6 +302,8 @@ SNProblem<dim>::integrate_face(MeshWorker::DoFInfo<dim> & dinfo1,
   // Use quadrature points from cell 1; reference element is the same
   const auto & fe = dof_handler.get_fe();
   const std::vector<double> & JxW = info1.fe_values().get_JxW_values();
+
+  // Upwinded contribution both sides of this face
   for (unsigned int q = 0; q < fe_v_out.n_quadrature_points; ++q)
     for (unsigned int j = 0; j < fe_v_out.dofs_per_cell; ++j)
     {
