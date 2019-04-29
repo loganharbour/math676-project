@@ -32,6 +32,8 @@ cmake_install.cmake
 *.out
 *.snm
 *.toc
+*.bbl
+*.blg
 
 # executable
 project

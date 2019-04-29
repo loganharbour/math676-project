@@ -33,6 +33,8 @@
 \usepackage[T1]{fontenc}
 \usepackage{diagbox}
 \usepackage{stmaryrd}
+\usepackage[numbers]{natbib}
+\usepackage{booktabs}
 
 \setlength\parindent{0pt} % No indents
 \setlength{\parskip}{1em} % Paragraph skip
@@ -46,7 +48,7 @@
 \DeclarePairedDelimiterX{\ainp}[2]{\langle}{\rangle}{#1, #2}
 \newcommand{\pinp}[2]{\left(#1,#2\right)}
 
-\newcommand{\pageTitle}{MATH 676 - Final Report}
+\newcommand{\pageTitle}{MATH 676 -- Final Report}
 \newcommand{\pageAuthor}{Logan Harbour}
 
 \begin{document}
@@ -58,6 +60,24 @@
 \maketitle
 
 \section{Introduction}
+
+The majority of my dissertation is to involve acceleration for method of characteristics (MOC) radiation transport. Many acceleration methods for discrete ordinates (S$_N$) radiation transport are similar to those utilized in MOC transport. Therefore, my overarching goal for this course was to investigate and implement common acceleration methods for S$_N$ transport utilizing Deal.ii. In specific, the focus is on diffusion synthetic acceleration (DSA) of source iteration \cite{adams2002fast} in discrete ordinates radiation transport.
+
+With source iteration (see Section \ref{subsec:SI}), the scattering term is lagged. For example, one first solves for the solution of particles that have not scattered. These particles are then used to determine the source of first-scattered particles, and so on. The issue lies in the fact that when the ratio of particles scattering to being absorbed is close to unity, the source iteration process requires a significant number of iterations. DSA is able to attenuate the most poorly attenuated errors very well, therefore the diffusion problem is used as a corrector to the scalar flux after each source iteration.
+
+From this, the primary goals of this work are as follows:
+\begin{enumerate}
+	\item Develop a one-group, discrete ordinates radiation transport code in Deal.ii
+	\item Develop a one-group, diffusion radiation transport code in Deal.ii
+	\item Utilize the diffusion code to estimate the error after a source iteration as a preconditioner
+\end{enumerate}
+
+The primary goals were completed approximately a month before the deliverables for the course were due. Therefore, the following additional implementations were made:
+\begin{enumerate}
+	\item Parallel support using the Trilinos wrappers
+	\item Reflecting boundary conditions, which require additional iteration within a source iteration
+	\item Acceleration of reflecting boundary conditions within the DSA solver
+\end{enumerate}
 
 \section{Methods}
 
@@ -114,7 +134,7 @@ where the discrete scalar flux, $\phi$, is
 
 To obtain the weak form, multiply Equation \eqref{eq:sn_equations_boundary} by the test function $v_d \in V_h$ and integrate as
 \begin{equation}
-	\int_{\mathbb{T}_h} \vo_d \cdot \nabla \psi_d v_d + \int_{\mathbb{T}_h} \sigma_t \psi_d v_d - \int_{\mathbb{T}_h} \sigma_s \phi v_d = \int_{\mathbb{T}_h} qv_d\,, \quad d = 1, \ldots, N_\Omega\,,
+	\int_{\mathbb{T}_h} \vo_d \cdot \nabla \psi_d v_d + \int_{\mathbb{T}_h} \sigma_t \psi_d v_d - \int_{\mathbb{T}_h} \sigma_s \phi v_d = \int_{\mathbb{T}_h} qv_d\,,
 \end{equation}
 and integrate the first term by parts to obtain
 \begin{equation}
@@ -132,6 +152,7 @@ where $\psi_d^+$ is the upwind value of $\psi_d$, that is, the value from the si
 \end{equation}
 
 \subsection{Source iteration}
+\label{subsec:SI}
 
 To converge the scattering source, cast Equation \eqref{eq:sn_equations_domain} with iterative index $\ell$ as
 \begin{equation}
@@ -156,7 +177,7 @@ Consider then the approximated error in $\psi^{(\ell + 1)}$, defined as $e^{(\el
 \end{equation}
 where $D$ is the diffusion coefficient, $D = 1 / 3 \sigma_t$.
 
-Cast Equation \eqref{eq:diffusion} in the same DG space with interior edges $\mathcal{E}_h^i$ and boundary edges $\mathcal{E}_h^b$ using a modified interior penalty method for the face terms to obtain
+Cast Equation \eqref{eq:diffusion} in the same DG space with interior edges $\mathcal{E}_h^i$ and boundary edges $\mathcal{E}_h^b$ using a modified interior penalty method developed in \cite{ragusa2010two} for the face terms to obtain
 \begin{multline}
 	\int_{\mathbb{T}_h} (D \nabla e^{(\ell + 1)} \cdot \nabla v + \sigma_a e^{(\ell + 1)} v) + \int_{\mathcal{E}_h^i} \left( \{\!\!\{ D \delta_n e^{(\ell + 1)} \}\!\!\} \llbracket v \rrbracket + \{\!\!\{ D \delta_n v \}\!\!\} \llbracket e^{(\ell + 1)} \rrbracket + \kappa \llbracket e^{(\ell + 1)} \rrbracket \llbracket v \rrbracket \right) \\
 	+ \int_{\mathcal{E}_h^b} \left( \kappa e^{(\ell + 1)} v - D v \delta_n e^{(\ell + 1)} - D e^{(\ell + 1)} \delta_n v \right) = \int_{\mathbb{T}_h} \sigma_s (\phi^{(\ell + 1)} - \phi^{(\ell)}) v\,,
@@ -173,7 +194,7 @@ and $h^\pm_\bot$ is a characteristic length of the cell in the direction orthogo
 
 \section{Code design and description}
 
-The bulk of the development resides in five classes, of which the \texttt{Problem} owns an instance of the other four. There are no public variables and the only access to private variables is through appropriately created getter methods that ensure const-correctness when possible. All primary system (LHS, RHS, solution) storage is done using the Deal.ii wrappers for the Trilinos vector and sparse matrix. A summary of these five classes follows in the next subsections.
+The bulk of the development resides in five classes, of which the \texttt{Problem} owns an instance of the other four. There are no public variables and the only access to private variables is through appropriately created getter methods that ensure const-correctness when possible. All primary system (LHS, RHS, solution) storage is done using the Deal.ii wrappers for the Trilinos vector and sparse matrix. A summary of these five classes follows in the next subsections. 
 
 \subsection{\texttt{Description} class}
 
@@ -195,6 +216,8 @@ The \texttt{SNProblem} class assembles and solves the S$_N$ problem. It does not
 
 The assembly and solve process for a specific direction are handled in the private methods \texttt{solve()} and \texttt{assemble()}. The assembly process is handled by the \texttt{MeshWorker::loop()}, which calls on the private methods \texttt{integrate\_cell()}, \texttt{integrate\_boundary()} and \texttt{integrate\_face()} to integrate cells, boundaries, and interior faces, respectively. It is important to note that setting the \texttt{MeshWorker::LoopControl} \texttt{faces\_to\_ghost} parameter to \texttt{both} disables the need for communicating ghosted values of the system matrix. This is because the faces that are on ghosted cells are assembled on both sides of the processor boundary. The \texttt{solve()} method utilizes the Trilinos GMRES solver and AMG preconditioner.
 
+The majority of the structure for the implementation of the \texttt{SNProblem} was provided by the Deal.ii step-12. The parallel implementation was derived from the Deal.ii step-40.
+
 \subsection{\texttt{DSAProblem} class}
 
 The \texttt{DSAProblem} class assembles and solves the diffusion problem utilized for acceleration of the S$_N$ source iterations. It does not interface with the \texttt{SNProblem} at all, purposely chosen in the design. Its public method available to the \texttt{Problem} is \texttt{assemble\_solve\_update()}, which assembles, solves, and updates the error estimate for the scalar flux error. 
@@ -203,11 +226,34 @@ At initialization, \texttt{assemble\_initial()} is called, which utilizes the \t
 
 The assembly and solve process for a single iteration are handled in the private methods \texttt{solve()} and \texttt{assemble()}. The assembly process is handled by the \texttt{MeshWorker::loop()}, which calls on the private methods \texttt{integrate\_cell()} and \texttt{integrate\_boundary()} to integrate cells and boundaries, respectively. The \texttt{solve()} method utilizes the Trilinos CG solver (the interior penalty method is symmetric) and AMG preconditioner.
 
+The majority of the structure for the implementation of the \texttt{SNProblem} was provided by the Deal.ii step-12 and step-39. The parallel implementation was derived from the Deal.ii step-40.
+
 \section{Numerical results}
 
-\subsection{Diffusion acceleration}
+\subsection{Constant solutions}
 
-To verify the diffusion acceleration implementation, a problem was considered with increasing scattering ratio $c = \sigma_s / \sigma_t$. The spatial domain is $[0, 10]^2$, discretized into $16^2$ elements with S$_{10}$ angular quadrature. The cross sections are $\sigma_a + \sigma_s = \sigma_t = 100$ with a uniform volumetric source of 1. The input and run script are located in \texttt{examples/dsa\_convergence}. The $L_2$ norm of the difference in scalar flux was plotted with varying $c$, as seen below in Figure \ref{fig:dsa}.
+Take a problem with a domain of $[0, 10]^2$, $32^2$ elements, S$_2$ quadrature, a homogeneous volumetric source of $q = 1$, and $\sigma_t = 100$. The top and right boundary conditions are reflective and the bottom and left boundary vary. One would expect that the constant solution in the interior of the domain is $q / \sigma_a$. With this, we the following four problems:
+\begin{itemize}
+	\item $\sigma_s = 99$ and incident isotropic flux boundary conditions on the bottom and left of $q / \sigma_a$
+	\item $\sigma_s = 99$ and vacuum boundary conditions on the bottom and left
+	\item Without scattering and incident isotropic flux boundary conditions on the bottom and left of $q / \sigma_a$
+	\item Without scattering and vacuum boundary conditions on the bottom and left
+\end{itemize}
+
+The inputs for these examples can be found in \texttt{examples/constant\_solution} and the results are plotted below in Figure \ref{fig:constant}.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=0.9\linewidth]{images/constant_solution}
+	\caption{The scalar flux along $y = 5$ for the constant solution problems.}
+	\label{fig:constant}
+\end{figure}
+
+For the two cases with incident isotropic flux boundary conditions, as the flux condition is equal to the constant solution, we would expect the near the constant solution for the entire domain (as seen). For the case with scattering and vacuum boundary conditions, the cells are optically thick therefore we would expect a jump and drop at the vacuum boundary. For the case without scattering and vacuum boundary conditions, we would expect a decaying exponential to the constant solution. All of these features are seen. 
+
+\subsection{DSA}
+
+To verify the diffusion synthetic acceleration implementation, a problem was considered with increasing scattering ratio $c = \sigma_s / \sigma_t$. The spatial domain is $[0, 10]^2$, discretized into $16^2$ elements with S$_{10}$ angular quadrature. The cross sections are $\sigma_a + \sigma_s = \sigma_t = 100$ with a uniform volumetric source of 1. The input and run script are located in \texttt{examples/dsa\_convergence}. The $L_2$ norm of the difference in scalar flux was plotted with varying $c$, as seen below in Figure \ref{fig:dsa}.
 
 \begin{figure}[H]
 	\centering
@@ -215,6 +261,22 @@ To verify the diffusion acceleration implementation, a problem was considered wi
 	\caption{Source iteration norms with and without diffusion acceleration.}
 	\label{fig:dsa}
 \end{figure}
+
+\section{Conclusion}
+
+The primary goals have been met for this project, and have shown successful results. Additional goals were created after reaching the primary goals early, and were also successful. I was very pleased to develop in Deal.ii and the code created for this project has shown to be a very successful test bed for other acceleration techniques. This is primarily due to the ease of development using Deal.ii and the \textit{plethora} of documentation available.
+
+I have no doubt that both myself and my advisor will come to utilize this code again in the near future. A list of future works has already been developed for the coming months:
+\begin{enumerate}
+	\item Multi-group support
+	\item Eigenvalue problem support
+	\item Acceleration of eigenvalue problems using DSA
+	\item Experimentation with other parallel solvers (pAIR!)
+\end{enumerate}
+
+\renewcommand\refname{References}
+\bibliographystyle{unsrtnat}
+\bibliography{ref} 
 
 \end{document}
 
