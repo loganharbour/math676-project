@@ -6,12 +6,12 @@
 #include <deal.II/base/tensor.h>
 
 #include <math.h>
-#include <algorithm>
 
 namespace RadProblem
 {
 using namespace dealii;
 
+// Enum for the hat directions, i.e., (1, 0, 0) = X, (0, 1, 0) = Y, ...
 enum HatDirection
 {
   X = 0,
@@ -22,42 +22,29 @@ enum HatDirection
   NEG_Z = 5
 };
 
+// Get the HatDirection from a Tensor<1, dim>
 template <int dim>
 static HatDirection
 get_hat_direction(const Tensor<1, dim> & v, const double eps = 1e-12)
 {
-  if (-std::abs(v[0]) + 1 < eps)
-    if (v[0] > 0)
-      return HatDirection::X;
-    else
-      return HatDirection::NEG_X;
-  else if (-std::abs(v[1]) + 1 < eps)
-    if (v[1] > 0)
-      return HatDirection::Y;
-    else
-      return HatDirection::NEG_Y;
-  else if (dim == 3 && -std::abs(v[2]) + 1 < eps)
-    if (v[2] > 0)
-      return HatDirection::Z;
-    else
-      return HatDirection::NEG_Z;
+  const Tensor<1, dim> unit_v = v / v.norm();
+  // Doesn't currently check if the Tensor has zeros in the other dimension
+  if (-std::abs(unit_v[0]) + 1 < eps)
+    return unit_v[0] > 0 ? HatDirection::X : HatDirection::NEG_X;
+  else if (-std::abs(unit_v[1]) + 1 < eps)
+    return unit_v[1] > 0 ? HatDirection::Y : HatDirection::NEG_Y;
+  else if (dim == 3 && -std::abs(unit_v[2]) + 1 < eps)
+    return unit_v[2] > 0 ? HatDirection::Z : HatDirection::NEG_Z;
   else
     throw ExcMessage("Couldn't find hat direction");
 }
 
+// Get the Tensor<1, dim> from a given HatDirection
 template <int dim>
-static dealii::Tensor<1, dim>
+static Tensor<1, dim>
 get_hat_direction(const HatDirection hat_direction)
 {
   Tensor<1, dim> v;
-  if (dim == 2)
-  {
-    v[0] = 0;
-    v[1] = 0;
-  }
-  if (dim == 3)
-    v[2] = 0;
-
   switch (hat_direction)
   {
     case X:
