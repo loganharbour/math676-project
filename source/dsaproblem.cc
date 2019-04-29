@@ -69,7 +69,10 @@ template <int dim>
 void
 DSAProblem<dim>::assemble_solve_update()
 {
+  // Assemble the parts of the LHS and RHS that are changing
   assemble();
+
+  // And solve
   solve();
 
   // Update scalar flux with change. Note that we do not update the angular flux
@@ -84,6 +87,8 @@ DSAProblem<dim>::assemble_solve_update()
     for (unsigned int d = 0; d < aq.n_dir(); ++d)
     {
       const auto dir = aq.dir(d);
+      // Loop through each entry for the incoming angular flux for direction d
+      // and update
       for (auto & dof_value_pair : reflective_incoming_flux[d])
       {
         const unsigned int dof = dof_value_pair.first;
@@ -116,11 +121,14 @@ template <int dim>
 void
 DSAProblem<dim>::assemble_initial()
 {
+  // Need shape function values, JxW, and shape function gradieints on cells and faces
   UpdateFlags update_flags = update_values | update_JxW_values | update_gradients;
   MeshWorker::IntegrationInfoBox<dim> info_box;
   info_box.add_update_flags_all(update_flags);
   info_box.initialize(dof_handler.get_fe(), discretization.get_mapping());
 
+  // Initialize the assembler for a simple system with dsa_matrix; system_rhs
+  // is used in initilization but is never updated in the initial setup
   MeshWorker::Assembler::SystemSimple<LA::MPI::SparseMatrix, LA::MPI::Vector> assembler;
   assembler.initialize(dsa_matrix, system_rhs);
 
@@ -162,13 +170,16 @@ DSAProblem<dim>::assemble()
 {
   TimerOutput::Scope t(timer, "DSAProblem assembly");
 
+  // Need shape function values and JxW on cells
   UpdateFlags update_flags = update_values | update_JxW_values;
   MeshWorker::IntegrationInfoBox<dim> info_box;
   info_box.add_update_flags_cell(update_flags);
+  // Also need shape function values and JxW on boundary faces w/ reflecting bcs
   if (description.has_reflecting_bcs() && reflective_bc_acceleration)
     info_box.add_update_flags_boundary(update_flags);
   info_box.initialize(dof_handler.get_fe(), discretization.get_mapping());
 
+  // Initialize the assembler for a symple system with system_matrix and system_rhs
   MeshWorker::Assembler::SystemSimple<LA::MPI::SparseMatrix, LA::MPI::Vector> assembler;
   assembler.initialize(system_matrix, system_rhs);
 
@@ -206,6 +217,8 @@ DSAProblem<dim>::integrate_cell(MeshWorker::DoFInfo<dim> & dinfo,
 {
   const FEValuesBase<dim> & fe = info.fe_values();
   Vector<double> & local_vector = dinfo.vector(0).block(0);
+
+  // Scattering cross section for this cell
   const double sigma_s = description.get_material(dinfo.cell->material_id()).sigma_s;
 
   // Change in scalar flux at each vertex for the scattering "source"
@@ -263,6 +276,7 @@ DSAProblem<dim>::integrate_face_initial(MeshWorker::DoFInfo<dim> & dinfo1,
                                         MeshWorker::IntegrationInfo<dim> & info1,
                                         MeshWorker::IntegrationInfo<dim> & info2) const
 {
+  // FEValues for each cell
   const auto & fe1 = info1.fe_values();
   const auto & fe2 = info2.fe_values();
 
@@ -283,6 +297,8 @@ DSAProblem<dim>::integrate_face_initial(MeshWorker::DoFInfo<dim> & dinfo1,
   const double c2 = kappa_c_factor * 4 * deg2 * (deg2 + 1);
   const double kappa = std::fmax(0.5 * (c1 * D1 / h1 + c2 * D2 / h2), 0.25);
 
+  // The following is very similar to LocalIntegrators::Laplace::ip_matrix, with
+  // subtle changes in regards to the penalty coefficient
   FullMatrix<double> & v1u1 = dinfo1.matrix(0, false).matrix;
   FullMatrix<double> & v1u2 = dinfo1.matrix(0, true).matrix;
   FullMatrix<double> & v2u1 = dinfo2.matrix(0, true).matrix;

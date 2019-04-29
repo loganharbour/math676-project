@@ -97,12 +97,14 @@ SNProblem<dim>::assemble(const unsigned int d)
 {
   TimerOutput::Scope t(timer, "SNProblem assembly");
 
+  // Need shape function values, JxW, and shape function gradieints on cells and faces
   MeshWorker::IntegrationInfoBox<dim> info_box;
   info_box.initialize_update_flags();
   UpdateFlags update_flags = update_JxW_values | update_values | update_gradients;
   info_box.add_update_flags_all(update_flags);
   info_box.initialize(dof_handler.get_fe(), discretization.get_mapping());
 
+  // Initialize the assembler for a symple system with system_matrix and system_rhs
   MeshWorker::Assembler::SystemSimple<LA::MPI::SparseMatrix, LA::MPI::Vector> assembler;
   assembler.initialize(system_matrix, system_rhs);
 
@@ -129,7 +131,9 @@ SNProblem<dim>::assemble(const unsigned int d)
   // Call loop to execute the integration
   MeshWorker::DoFInfo<dim> dof_info(dof_handler);
   MeshWorker::LoopControl loop_control;
-  // With faces_to_ghost = both,
+  // With faces_to_ghost = both, we assemble the processor boundary faces on both
+  // processors, which negates the need to communicate ghosted values in
+  // system_matrix and system_rhs
   loop_control.faces_to_ghost = MeshWorker::LoopControl::FaceOption::both;
   MeshWorker::loop<dim, dim, MeshWorker::DoFInfo<dim>, MeshWorker::IntegrationInfoBox<dim>>(
       dof_handler.begin_active(),

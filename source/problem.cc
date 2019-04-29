@@ -68,7 +68,7 @@ Problem<dim>::setup()
 
   TimerOutput::Scope t(timer, "Problem setup");
 
-  // Resize system variable
+  // Resize system variables
   system_rhs.reinit(discretization.get_locally_owned_dofs(), comm);
   system_matrix.reinit(discretization.get_locally_owned_dofs(),
                        discretization.get_locally_owned_dofs(),
@@ -112,10 +112,18 @@ Problem<dim>::setup()
   {
     reflective_incoming_flux.resize(aq.n_dir());
 
+    // Initialize FEFaceValues so that we can access face normals. One quadrature
+    // point is fine; our faces are not curved so we just access the normal at
+    // the single quadrature point
     QGauss<dim - 1> quadrature(1);
     FEFaceValues<dim> fe(dof_handler.get_fe(), quadrature, update_normal_vectors);
+    // Storage for the DoFs for a single cell
     std::vector<types::global_dof_index> dofs(fe.dofs_per_cell);
+    // Storage for the DoFs that are on the boundary faces for a single cell
     std::vector<types::global_dof_index> face_dofs(GeometryInfo<dim>::vertices_per_face);
+
+    // Loop through each cell; we are seeking every boundary face on a reflective
+    // boundary
     for (const auto & cell : dof_handler.active_cell_iterators())
     {
       // Skip non-local and non-boundary cells
@@ -141,6 +149,7 @@ Problem<dim>::setup()
         for (unsigned int fv = 0; fv < face_dofs.size(); ++fv)
           face_dofs[fv] = dofs[GeometryInfo<dim>::face_to_cell_vertices(f, fv)];
 
+        // Initialize storage for each dof on this face
         for (const types::global_dof_index dof : face_dofs)
         {
           // Initialize storage for the net current on reflective boundaries
@@ -168,6 +177,7 @@ Problem<dim>::solve()
   // Norm of the current on reflecting boundaries
   double reflective_dJ_norm;
 
+  // Source iteration loop
   for (unsigned int l_source = 0; l_source < max_source_its; ++l_source)
   {
     pcout << "Source iteration " << l_source << std::endl;
@@ -175,6 +185,7 @@ Problem<dim>::solve()
     // Copy to old scalar flux (only needed between source iterations)
     scalar_flux_old = scalar_flux;
 
+    // Reflective boundary condition loop (only once w/o reflective bcs)
     for (unsigned int l_ref = 0; l_ref < max_ref_its; ++l_ref)
     {
       // Zero for scalar flux update
