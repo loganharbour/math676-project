@@ -58,12 +58,8 @@ private:
   /// The angular quadrature object
   AngularQuadrature<dim> aq;
 
-  /// Boundary ids that exist on the local mesh
-  std::set<types::boundary_id> local_boundary_ids;
   /// Boundary ids that exist on the entire mesh
   std::set<types::boundary_id> boundary_ids;
-  /// Material ids that exist on the local mesh
-  std::set<types::material_id> local_material_ids;
   /// Material ids that exist on the entire mesh
   std::set<types::material_id> material_ids;
 
