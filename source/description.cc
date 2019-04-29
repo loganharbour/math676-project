@@ -92,7 +92,7 @@ Description<dim>::setup_bcs(const std::set<dealii::types::boundary_id> & mesh_bo
 template <int dim>
 void
 Description<dim>::fill_bcs(const BCTypes type,
-                           const std::vector<dealii::types::boundary_id> & ids,
+                           const std::vector<unsigned int> & ids,
                            const std::vector<double> * values,
                            const std::vector<double> * directions,
                            const AngularQuadrature<dim> * aq)
@@ -115,7 +115,8 @@ Description<dim>::fill_bcs(const BCTypes type,
     // Fill a BC that includes a value and no direction
     else if (values && !directions)
       bcs.emplace(ids[i], BC(type, (*values)[i]));
-    // Fill a BC that includes a value and a direction (and find the direction)
+    // Fill a BC that includes a value and a direction, in which case we find the
+    // direction in the angular quadrature set that is closest to direction
     else
     {
       Tensor<1, dim> direction;

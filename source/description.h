@@ -98,7 +98,7 @@ private:
    * closest direction in the quadrature set for Incident BCs.
    */
   void fill_bcs(const BCTypes type,
-                const std::vector<dealii::types::boundary_id> & ids,
+                const std::vector<unsigned int> & ids,
                 const std::vector<double> * values = NULL,
                 const std::vector<double> * directions = NULL,
                 const AngularQuadrature<dim> * aq = NULL);
