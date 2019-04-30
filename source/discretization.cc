@@ -89,10 +89,6 @@ Discretization<dim>::generate_mesh()
   // Refine if requested
   triangulation.refine_global(uniform_refinement);
 
-  // Storage for the local boundary and material ids
-  std::set<types::boundary_id> local_boundary_ids;
-  std::set<types::material_id> local_material_ids;
-
   // Loop through all local cells to grab the possible boundary and material ids
   // Also update the material ids for split_top_bottom if enabled
   for (auto cell : triangulation.active_cell_iterators())
@@ -105,7 +101,7 @@ Discretization<dim>::generate_mesh()
       cell->set_material_id(1);
 
     // Append this cell's material id
-    local_material_ids.insert(cell->material_id());
+    material_ids.insert(cell->material_id());
 
     // No boundary ids to add if this cell isn't on the boundary
     if (!cell->at_boundary())
@@ -114,19 +110,15 @@ Discretization<dim>::generate_mesh()
     // Append the boundary ids for each boundary face
     for (unsigned int i = 0; i < GeometryInfo<dim>::faces_per_cell; ++i)
       if (cell->face(i)->at_boundary())
-        local_boundary_ids.insert(cell->face(i)->boundary_id());
+        boundary_ids.insert(cell->face(i)->boundary_id());
   }
 
   // Gather the local boundary and material ids from each processor; for which we
   // convert the local ids to a std::vector, which is supported by boost::seralize
-  const auto per_proc_boundary_ids =
-      Utilities::MPI::all_gather(comm,
-                                 std::vector<dealii::types::boundary_id>(local_boundary_ids.begin(),
-                                                                         local_boundary_ids.end()));
-  const auto per_proc_material_ids =
-      Utilities::MPI::all_gather(comm,
-                                 std::vector<dealii::types::material_id>(local_material_ids.begin(),
-                                                                         local_material_ids.end()));
+  const auto per_proc_boundary_ids = Utilities::MPI::all_gather(
+      comm, std::vector<dealii::types::boundary_id>(boundary_ids.begin(), boundary_ids.end()));
+  const auto per_proc_material_ids = Utilities::MPI::all_gather(
+      comm, std::vector<dealii::types::material_id>(material_ids.begin(), material_ids.end()));
 
   // Insert the local boundary ids from each processor into the global set
   for (const auto & proc_boundary_ids : per_proc_boundary_ids)
