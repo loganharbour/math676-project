@@ -31,6 +31,7 @@
 \usepackage{amssymb}
 \usepackage{tikz}
 \usepackage{stmaryrd}
+\usepackage{wasysym}
 
 % nicer item settings
 \setlist[1]{nolistsep,label=\(\textcolor{Maroon}{\blacksquare}\)}
@@ -84,13 +85,19 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}\frametitle{Introduction}
-	\begin{block}{}
-		\begin{itemize}
+	\begin{block}{Background}
+		\begin{itemize} 
 			\item My Ph.D. work involves various acceleration techniques for method of characteristics (MOC) radiation transport
 			\item Many acceleration methods for discrete ordinates (S$_N$) transport are similar to those in MOC transport
-			\item Therefore, the overarching goal for this course is to investigate and implement a common acceleration method for S$_N$ transport utilizing Deal.ii
-			\item In specific, the focus is on diffusion synthetic acceleration (DSA) of source iteration
-			\item Additional goals were added as I was able to complete the primary goal early
+			\item In specific, the focus is diffusion synthetic acceleration (DSA), which attenuates the errors most poorly attenuated by source iteration
+		\end{itemize}
+	\end{block}
+	\begin{block}{Goals}
+		\begin{itemize}
+			\item Develop a one-group, DGFEM, S$_N$ radiation transport code
+			\item Develop a one-group, DGFEM, diffusion radiation transport code
+			\item Accelerate the S$_N$ source iterations with DSA using the diffusion code
+			\item More... if time permits (which it did!)
 		\end{itemize}
 	\end{block}
 \end{frame}
@@ -132,7 +139,9 @@
 	\[
 		R^{\ell + 1} = \frac{\sigma_s}{2\pi} (\phi^{\ell + 1} - \phi^\ell)\,.
 	\]
-	Fourier analysis shows that the angular flux error has a linearly anisotropic angular dependence. The diffusion approximation is exact for such a dependence, therefore we can cast the diffusion problem with the source above to form an error equation with the diffusion approximation that will attenuate the errors most poorly attenuated by the transport solve. The approximation is cast as:
+	Fourier analysis shows that the angular flux error has a linearly anisotropic angular dependence. The diffusion approximation is exact for such a dependence $\rightarrow$ cast the diffusion problem to form an error equation with the diffusion approximation that will attenuate the errors most poorly attenuated by the transport solve.\\~
+	
+	Said approximation is cast as:
 	\begin{equation}
 		\label{eq:diffusion}
 		-\nabla \cdot D \nabla \delta e^{\ell + 1} + \sigma_a \delta e^{\ell + 1} = \sigma_s \left( \phi^{\ell + 1} - \phi^\ell\right)\,,
