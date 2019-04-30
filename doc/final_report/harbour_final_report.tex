@@ -232,10 +232,10 @@ The majority of the structure for the implementation of the \texttt{SNProblem} w
 
 \subsection{Constant solutions}
 
-Take a problem with a domain of $[0, 10]^2$, $32^2$ elements, S$_2$ quadrature, a homogeneous volumetric source of $q = 1$, and $\sigma_t = 100$. The top and right boundary conditions are reflective and the bottom and left boundary vary. One would expect that the constant solution in the interior of the domain is $q / \sigma_a$. With this, we the following four problems:
+Take a problem with a domain of $[0, 10]^2$, $64^2$ elements, S$_2$ quadrature, a homogeneous volumetric source of $q = 1$, and $\sigma_t = 10$. The top and right boundary conditions are reflective and the bottom and left boundary vary. One would expect that the constant solution in the interior of the domain is $q / \sigma_a$. With this, we the following four problems:
 \begin{itemize}
-	\item $\sigma_s = 99$ and incident isotropic flux boundary conditions on the bottom and left of $q / \sigma_a$
-	\item $\sigma_s = 99$ and vacuum boundary conditions on the bottom and left
+	\item $\sigma_s = 9.9$ and incident isotropic flux boundary conditions on the bottom and left of $q / \sigma_a$
+	\item $\sigma_s = 9.9$ and vacuum boundary conditions on the bottom and left
 	\item Without scattering and incident isotropic flux boundary conditions on the bottom and left of $q / \sigma_a$
 	\item Without scattering and vacuum boundary conditions on the bottom and left
 \end{itemize}
@@ -245,11 +245,11 @@ The inputs for these examples can be found in \texttt{examples/constant\_solutio
 \begin{figure}[H]
 	\centering
 	\includegraphics[width=0.9\linewidth]{images/constant_solution}
-	\caption{The scalar flux along $y = 5$ for the constant solution problems.}
+	\caption{The scalar flux along $y = 8$ for the constant solution problems.}
 	\label{fig:constant}
 \end{figure}
 
-For the two cases with incident isotropic flux boundary conditions, as the flux condition is equal to the constant solution, we would expect the near the constant solution for the entire domain (as seen). For the case with scattering and vacuum boundary conditions, the cells are optically thick therefore we would expect a jump and drop at the vacuum boundary. For the case without scattering and vacuum boundary conditions, we would expect a decaying exponential to the constant solution. All of these features are seen. 
+For the two cases with incident isotropic flux boundary conditions, as the flux condition is equal to the constant solution, we would expect the near the constant solution for the entire domain (as seen). For the case with scattering and vacuum boundary conditions, we would expect a decaying exponential to the constant solution due to the optical thickness of the domain. For the case without scattering and vaccuum boundary conditions, we would expect the constant solution near the vacuum boundary due to the optical thickness of the domain.
 
 \subsection{DSA}
 
