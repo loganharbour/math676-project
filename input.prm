@@ -25,6 +25,8 @@ end
 subsection Discretization
   # Angular quadrature order
   set aq_order           = 10
+  # Angular quadrature types (product or triangular)
+  set aq_type            = product
 
   # Hypercube mesh option (lower, upper bound)
   set hypercube_bounds   =

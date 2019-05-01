@@ -22,7 +22,7 @@ end
 
 subsection Discretization
   set aq_order           = 4
-  set aq_type            = 1
+  set aq_type            = triangular
   set hypercube_bounds   = 0, 1
   set uniform_refinement = 6
 end
