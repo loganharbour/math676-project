@@ -1,0 +1,23 @@
+# search for negativities in thick diffusion limit
+# ---------------------
+subsection Description
+  set material_ids                 = 0
+  set material_sigma_s             = 0.09990
+  set material_sigma_t             = 0.1
+  set material_src                 = 1.
+  set vacuum_boundary_ids          = 0, 1, 2, 3
+end
+
+
+subsection Discretization
+  set aq_order           = 4
+  set hypercube_bounds   = 0, 100
+  set uniform_refinement = 4
+end
+
+
+subsection Problem
+  set vtu_filename = ragusa4
+  set save_angular_flux = true
+  set source_iteration_tolerance     = 1e-6
+end

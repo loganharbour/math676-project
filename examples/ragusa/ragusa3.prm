@@ -1,30 +1,40 @@
-# from e-mail:
 # Square domain split in 2 rectangular half (top/bottom). Incidence in one
-# direction at bottom face. Lower half: sigma_t=0.01. Upper half half:
+# direction at left face. Lower half: sigma_t=0.001. Upper half half:
 # sigma_t = 100. Scattering ration in both zones = 0.99. Volumetric source only
 # present on top half.
+# ---------------------
 
 subsection Description
   set material_ids                 = 0, 1
-  set material_sigma_s             = 0.0099, 99
-  set material_sigma_t             = 0.01, 100
-  set material_src                 = 0, 1
-  set vacuum_boundary_ids          = 0, 1, 3
-  set incident_boundary_ids        = 2
+  set material_sigma_s             = 0, 99
+#  set material_sigma_s             = 0, 0
+  set material_sigma_t             = 0.001, 100
+  set material_src                 = 0, 0
+  set vacuum_boundary_ids          = 2, 1, 3
+  set incident_boundary_ids        = 0
   set incident_boundary_fluxes     = 1
-  set incident_boundary_directions = 0, 1
+  set incident_boundary_directions = 1, 0.1
 end
-
 
 subsection Discretization
-  set aq_order           = 4
+  set aq_order           = 6
   set split_top_bottom   = true
-  set hypercube_bounds   = 0, 5
-  set uniform_refinement = 4
+  set hypercube_bounds   = 0, 1
+  set uniform_refinement = 7
 end
-
 
 subsection Problem
   set vtu_filename = ragusa3
   set save_angular_flux = true
+  set source_iteration_tolerance = 1e-8
+end
+
+subsection SNProblem
+  set absolute_tolerance         = 1e-6
+  set relative_tolerance         = 1e-6
+end
+
+subsection DSAProblem
+  set absolute_tolerance         = 1e-6
+  set relative_tolerance         = 1e-6
 end

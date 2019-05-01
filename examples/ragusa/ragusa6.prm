@@ -1,9 +1,9 @@
-# transport through void
+# transport through a pure absorber
 # ---------------------
 subsection Description
   set material_ids                 = 0
   set material_sigma_s             = 0
-  set material_sigma_t             = 0
+  set material_sigma_t             = 1
   set material_src                 = 0
   set vacuum_boundary_ids          = 2, 1, 3
   set incident_boundary_ids        = 0
@@ -13,13 +13,13 @@ end
 
 
 subsection Discretization
-  set aq_order           = 2
+  set aq_order           = 6
   set hypercube_bounds   = 0, 1
-  set uniform_refinement = 6
+  set uniform_refinement = 5
 end
 
 
 subsection Problem
-  set vtu_filename = ragusa7
+  set vtu_filename = ragusa6
   set save_angular_flux = true
 end

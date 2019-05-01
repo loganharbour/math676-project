@@ -1,0 +1,21 @@
+# pure absorber with volumetric source
+# ---------------------
+subsection Description
+  set material_ids                 = 0
+  set material_sigma_s             = 0
+  set material_sigma_t             = 20
+  set material_src                 = 30
+  set vacuum_boundary_ids          = 0, 2, 1, 3
+end
+
+
+subsection Discretization
+  set aq_order           = 6
+  set hypercube_bounds   = 0, 1
+  set uniform_refinement = 5
+end
+
+
+subsection Problem
+  set vtu_filename = ragusa5
+end
