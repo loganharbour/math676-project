@@ -1,7 +1,5 @@
-# from e-mail:
-# 100 x 100 domain (dimensions). Reflective top/bottom. Sigma_t=Sigma_s=10.
-# No source. Incident on left in only 1 direction (S4 or higher)
-
+# 1D-equivalent grazing incident problem. thick diffusion limit
+# ---------------------
 subsection Description
   set material_ids                 = 0
   set material_sigma_s             = 100
@@ -10,21 +8,33 @@ subsection Description
   set vacuum_boundary_ids          = 1
   set reflective_boundary_ids      = 2, 3
   set incident_boundary_ids        = 0
-  set incident_boundary_fluxes     = 100
+  set incident_boundary_fluxes     = 1
   set incident_boundary_directions = 0.1, 1
 end
 
 
 subsection Discretization
-  set aq_order           = 4
-  set hypercube_bounds   = 0, 100
-  set uniform_refinement = 6
+  set aq_order           = 6
+  set hypercube_bounds   = 0, 10
+  set uniform_refinement = 5
 end
 
 
 subsection Problem
   set vtu_filename = ragusa2
-  set max_reflective_iterations = 10
-  set source_iteration_tolerance = 1e-10
-  set save_angular_flux = true
+  set dsa = true
+  set max_reflective_iterations = 3
+  set source_iteration_tolerance     = 1e-8
+  set reflective_iteration_tolerance = 1e-5
+end
+
+#subsection SNProblem
+#  set absolute_tolerance         = 1e-12
+#  set relative_tolerance         = 1e-12
+#end
+
+subsection DSAProblem
+  # Factor to multiply c in the penalty coefficient (should be >= 1!)
+  set kappa_c_factor             = 5
+  set reflective_bc_acceleration = true
 end
