@@ -22,6 +22,12 @@ enum Hat
   NEG_Z = 5
 };
 
+enum AQ_Type
+{
+  product = 0,
+  triangular = 1
+};
+
 // Get the Hat from a Tensor<1, dim>
 template <int dim>
 static Hat
@@ -80,7 +86,8 @@ class AngularQuadrature
 public:
   AngularQuadrature() {}
 
-  void init(const unsigned int order)
+//  void init(const unsigned int order, const AQ_Type aq_type)
+  void init(const unsigned int order, const unsigned int aq_type)
   {
     if (initialized)
       throw ExcMessage("The AngularQuadrature object has already been initialized");
@@ -89,15 +96,17 @@ public:
     // Nomenclature for SN: N = number of polar levels (positive and negative)
     // Azimuthally, N/2 directions in [0,pi/2]
     // Hence, per octant: N/2 (polar level) times N/2 in azimuth = N^2/4
-    n_directions = (dim == 2 ? 1 : 2) * order * order;
+    if (aq_type==RadProblem::product)
+      n_directions = (dim == 2 ? 1 : 2) * order * order;
+    else if (aq_type==RadProblem::triangular)
+      n_directions = (dim == 2 ? 1 : 2) * order * (order + 2) / 2;
+    else
+      throw ExcMessage("unknown angular quadrature type");
 
     const QGauss<1> gq(order);
     const auto & gq_JxW = gq.get_weights();
     const auto & gq_points = gq.get_points();
 
-    // Azimuthal weights (Gauss-Chebyshev, thus uniform)
-    // wa = 2pi/2N = pi/N; normalize them right away
-    const double azi_weight = 1. / (2. * order);
     // Sum of polar weights = 1 for the entire range in 3D, but 0.5 in 2D
     const double polar_norm = (dim == 2 ? 0.5 : 1);
 
@@ -109,15 +118,31 @@ public:
       if (dim == 2 && gq_points[ig](0) <= 0.5)
         continue;
 
+      double n_azi = 2 * order;
+      if (aq_type==RadProblem::triangular)
+        {
+          // tri shift
+          const double tri_shift = -((double)order-1.)/2;
+          n_azi -=  4 * std::floor(std::abs(tri_shift+ig));
+        }
+      // Azimuthal weights (Gauss-Chebyshev, thus uniform)
+      // wa = 2pi/2N for product;
+      // wa = 2pi/(4*(N/2-i)) for triangular;
+      // normalize them right away
+      double azi_weight = 1. / n_azi;
+
       const double cos_theta = gq_points[ig](0) * 2.0 - 1.0;
       const double sin_theta = std::sqrt(1 - std::pow(cos_theta, 2));
       const double weight = gq_JxW[ig] * azi_weight / polar_norm;
 
-      // Loop over azimuthal angles (phi in (0,2pi)). 2N azimuthal angles
-      // phi = 2pi/2N*(i+1/2), i = 0, ..., 2N-1
-      for (unsigned int ic = 0; ic < 2 * order; ++ic)
+      // Loop over azimuthal angles (phi in (0,2pi)).
+      // product: 2N azimuthal angles
+      //          phi = 2pi/2N*(i+1/2), i = 0, ..., 2N-1
+      // triangular: 2N-4i azimuthal angles
+      //          phi = 2pi/(2N-4i)*(i+1/2), i = 0, ..., 2N-4i-1
+      for (unsigned int ic = 0; ic < n_azi; ++ic)
       {
-        const double phi = ((double)ic + 0.5) * M_PI / order;
+        const double phi = ((double)ic + 0.5) * 2*M_PI / n_azi;
 
         Tensor<1, dim> direction;
         direction[0] = std::cos(phi) * sin_theta;
@@ -130,6 +155,14 @@ public:
         weights.emplace_back(weight);
       }
     }
+    // printout
+    for (unsigned int d =0; d < n_directions; ++d)
+      {
+        std::cout << directions[d][0] << " , " << directions[d][1];
+        if (dim==3)
+          std::cout << " , " << directions[d][2];
+        std::cout << " , " << weights[d] << std::endl;
+      }
 
     // Initialize reflected directions (dim * 2 possible reflective normals)
     reflect_to_vector.resize(dim * 2);

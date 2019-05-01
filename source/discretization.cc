@@ -22,6 +22,8 @@ Discretization<dim>::Discretization(MPI_Comm & comm, TimerOutput & timer)
 {
   // Angular quadrature order (default: 10)
   add_parameter("aq_order", aq_order);
+  // Angular quadrature type (default: product)
+  add_parameter("aq_type", aq_type);
 
   // Mesh uniform refinement levels (default: 0)
   add_parameter("uniform_refinement", uniform_refinement);
@@ -52,7 +54,7 @@ Discretization<dim>::setup()
   DoFTools::extract_locally_relevant_dofs(dof_handler, locally_relevant_dofs);
 
   // Initialize angular quadrature
-  aq.init(aq_order);
+  aq.init(aq_order,aq_type);
 
   // Setup sparsity pattern
   dsp.reinit(locally_relevant_dofs.size(), locally_relevant_dofs.size(), locally_relevant_dofs);
