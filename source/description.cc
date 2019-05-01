@@ -74,14 +74,14 @@ void
 Description<dim>::setup_bcs(const std::set<dealii::types::boundary_id> & mesh_boundary_ids,
                             const AngularQuadrature<dim> & aq)
 {
-  fill_bcs(BCTypes::Isotropic, isotropic_boundary_ids, &isotropic_boundary_fluxes);
-  fill_bcs(BCTypes::Incident,
+  fill_bcs(IsotropicBC, isotropic_boundary_ids, &isotropic_boundary_fluxes);
+  fill_bcs(IncidentBC,
            incident_boundary_ids,
            &incident_boundary_fluxes,
            &incident_boundary_directions,
            &aq);
-  fill_bcs(BCTypes::Reflective, reflective_boundary_ids);
-  fill_bcs(BCTypes::Vacuum, vacuum_boundary_ids);
+  fill_bcs(ReflectiveBC, reflective_boundary_ids);
+  fill_bcs(VacuumBC, vacuum_boundary_ids);
 
   // Check for a BC for every boundary id
   for (auto it = mesh_boundary_ids.begin(); it != mesh_boundary_ids.end(); ++it)
@@ -130,9 +130,9 @@ Description<dim>::fill_bcs(const BCTypes type,
 
   if (ids.size() != 0)
   {
-    if (type != BCTypes::Vacuum)
+    if (type != VacuumBC)
       incident_bcs = true;
-    if (type == BCTypes::Reflective)
+    if (type == ReflectiveBC)
       reflecting_bcs = true;
   }
 }

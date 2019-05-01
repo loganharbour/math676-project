@@ -17,10 +17,11 @@ class Discretization;
 /// The possible boundary condition types
 enum BCTypes
 {
-  Isotropic,
-  Incident,
-  Reflective,
-  Vacuum
+  InvalidBC = 0,
+  IsotropicBC = 1,
+  IncidentBC = 2,
+  ReflectiveBC = 3,
+  VacuumBC = 4
 };
 
 /// Struct for boundary condition storage

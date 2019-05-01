@@ -12,15 +12,16 @@ namespace RadProblem
 {
 using namespace dealii;
 
-// Enum for the hat directions, i.e., (1, 0, 0) = X, (0, 1, 0) = Y, ...
+// Enum for the hat directions, i.e., (1, 0, 0) = XHat, (0, 1, 0) = YHat, ...
 enum Hat
 {
-  X = 0,
-  NEG_X = 1,
-  Y = 2,
-  NEG_Y = 3,
-  Z = 4,
-  NEG_Z = 5
+  InvalidHat = 0,
+  XHat = 1,
+  NegXHat = 2,
+  YHat = 3,
+  NegYHat = 4,
+  ZHat = 5,
+  NegZHat = 6
 };
 
 // The angular quadrature types
@@ -52,13 +53,13 @@ get_hat_direction(const Tensor<1, dim> & v, const double eps = 1e-12)
   const Tensor<1, dim> unit_v = v / v.norm();
   if (-std::abs(unit_v[0]) + 1 < eps && std::abs(unit_v[1]) < eps &&
       !(dim == 3 && std::abs(unit_v[2]) < eps))
-    return unit_v[0] > 0 ? Hat::X : Hat::NEG_X;
+    return unit_v[0] > 0 ? XHat : NegXHat;
   else if (-std::abs(unit_v[1]) + 1 < eps && std::abs(unit_v[0]) < eps &&
            !(dim == 3 && std::abs(unit_v[2]) < eps))
-    return unit_v[1] > 0 ? Hat::Y : Hat::NEG_Y;
+    return unit_v[1] > 0 ? YHat : NegYHat;
   else if (dim == 3 && -std::abs(unit_v[2]) + 1 < eps && std::abs(unit_v[0]) < eps &&
            std::abs(unit_v[1]) < eps)
-    return unit_v[2] > 0 ? Hat::Z : Hat::NEG_Z;
+    return unit_v[2] > 0 ? ZHat : NegZHat;
   else
     throw ExcMessage("Couldn't find hat direction");
 }
@@ -71,22 +72,22 @@ get_hat_direction(const Hat hat)
   Tensor<1, dim> v;
   switch (hat)
   {
-    case X:
+    case XHat:
       v[0] = 1;
       break;
-    case NEG_X:
+    case NegXHat:
       v[0] = -1;
       break;
-    case Y:
+    case YHat:
       v[1] = 1;
       break;
-    case NEG_Y:
+    case NegYHat:
       v[1] = -1;
       break;
-    case Z:
+    case ZHat:
       v[2] = 1;
       break;
-    case NEG_Z:
+    case NegZHat:
       v[2] = -1;
       break;
     default:
@@ -175,7 +176,10 @@ public:
 
     // Initialize reflected directions (dim * 2 possible reflective normals)
     reflect_to_vector.resize(dim * 2);
-    for (unsigned int hat_i = 0; hat_i < dim * 2; ++hat_i)
+
+    // Loop through all possible hat directions
+    // (0 for Hat enum represents invalid, 1 to dim * 2 are valid)
+    for (unsigned int hat_i = 1; hat_i <= dim * 2; ++hat_i)
     {
       // This normal direction
       const Hat hat = (Hat)hat_i;

@@ -135,8 +135,7 @@ Problem<dim>::setup()
       {
         // Skip non-boundary faces and non-reflective faces
         const auto & face = cell->face(f);
-        if (!face->at_boundary() ||
-            description.get_bc(face->boundary_id()).type != BCTypes::Reflective)
+        if (!face->at_boundary() || description.get_bc(face->boundary_id()).type != ReflectiveBC)
           continue;
 
         // Outward-facing unit normal for this face
@@ -307,8 +306,7 @@ Problem<dim>::reflective_dJ_L2()
     {
       // Skip non-boundary faces and non-reflective faces
       const auto & face = cell->face(f);
-      if (!face->at_boundary() ||
-          description.get_bc(face->boundary_id()).type != BCTypes::Reflective)
+      if (!face->at_boundary() || description.get_bc(face->boundary_id()).type != ReflectiveBC)
         continue;
 
       fe_v.reinit(cell, f);

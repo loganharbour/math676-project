@@ -242,7 +242,7 @@ DSAProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
 {
   // Nothing to do without reflective bc correction
   if (!reflective_bc_acceleration || !description.has_reflecting_bcs() ||
-      description.get_bc(dinfo.face->boundary_id()).type != BCTypes::Reflective)
+      description.get_bc(dinfo.face->boundary_id()).type != ReflectiveBC)
     return;
 
   Vector<double> & local_vector = dinfo.vector(0).block(0);
@@ -350,7 +350,7 @@ DSAProblem<dim>::integrate_boundary_initial(MeshWorker::DoFInfo<dim> & dinfo,
   const double D = description.get_material(dinfo.cell->material_id()).D;
 
   // RHS contribution (for dirichlet BCs)
-  if (bc_type != BCTypes::Reflective)
+  if (bc_type != ReflectiveBC)
   {
     // Length of the cell in the orthogonal direction to this face
     const unsigned int n = GeometryInfo<dim>::unit_normal_direction[dinfo.face_number];

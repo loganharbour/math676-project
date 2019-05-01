@@ -221,13 +221,13 @@ SNProblem<dim>::integrate_boundary(MeshWorker::DoFInfo<dim> & dinfo,
     std::vector<double> bc_values(fe_v.n_quadrature_points, 0);
     const auto & bc = description.get_bc(dinfo.face->boundary_id());
     // Isotropic boundary conditions or incident into this direction
-    if (bc.type == BCTypes::Isotropic || (bc.type == BCTypes::Incident && bc.d == d))
+    if (bc.type == IsotropicBC || (bc.type == IncidentBC && bc.d == d))
     {
       for (unsigned int q = 0; q < fe_v.n_quadrature_points; ++q)
         bc_values[q] = bc.value;
     }
     // Reflective boundary condition
-    else if (bc.type == BCTypes::Reflective)
+    else if (bc.type == ReflectiveBC)
     {
       for (unsigned int i = 0; i < fe_v.dofs_per_cell; ++i)
       {
