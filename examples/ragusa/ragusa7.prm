@@ -21,7 +21,8 @@ end
 
 
 subsection Discretization
-  set aq_order           = 2
+  set aq_order           = 4
+  set aq_type            = 1
   set hypercube_bounds   = 0, 1
   set uniform_refinement = 6
 end
@@ -30,4 +31,5 @@ end
 subsection Problem
   set vtu_filename = ragusa7
   set save_angular_flux = true
+  set reflective_iteration_tolerance = 1e-7
 end

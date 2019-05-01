@@ -65,6 +65,9 @@ private:
 
   /// Angular quadrature order
   unsigned int aq_order = 10;
+  /// Angular quadrature type
+  //AQ_Type aq_type = RadProblem::product;
+  unsigned int aq_type = 0;
   /// Mesh uniform refinements
   unsigned int uniform_refinement = 0;
   /// Hyper cube mesh bounds

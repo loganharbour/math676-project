@@ -34,7 +34,7 @@ subsection Discretization
   # Gmsh filename
   set msh                =
 
-  # Uniformly refin the mesh
+  # Uniformly refine the mesh
   set uniform_refinement = 0
 end
 
