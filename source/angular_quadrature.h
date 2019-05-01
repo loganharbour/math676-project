@@ -15,13 +15,13 @@ using namespace dealii;
 // Enum for the hat directions, i.e., (1, 0, 0) = XHat, (0, 1, 0) = YHat, ...
 enum Hat
 {
-  InvalidHat = 0,
-  XHat = 1,
-  NegXHat = 2,
-  YHat = 3,
-  NegYHat = 4,
-  ZHat = 5,
-  NegZHat = 6
+  XHat = 0,
+  NegXHat = 1,
+  YHat = 2,
+  NegYHat = 3,
+  ZHat = 4,
+  NegZHat = 5,
+  InvalidHat = 6
 };
 
 // The angular quadrature types
@@ -178,8 +178,7 @@ public:
     reflect_to_vector.resize(dim * 2);
 
     // Loop through all possible hat directions
-    // (0 for Hat enum represents invalid, 1 to dim * 2 are valid)
-    for (unsigned int hat_i = 1; hat_i <= dim * 2; ++hat_i)
+    for (unsigned int hat_i = 0; hat_i < dim * 2; ++hat_i)
     {
       // This normal direction
       const Hat hat = (Hat)hat_i;

@@ -67,6 +67,8 @@ template <int dim>
 void
 Discretization<dim>::generate_mesh()
 {
+  if (hypercube_bounds.size() == 0 && msh.length() == 0)
+    throw ExcMessage("Must provide hypercube_bounds or msh in Discretization!");
   if (hypercube_bounds.size() != 0 && msh.length() != 0)
     throw ExcMessage("msh and hypercube_bounds cannot be supplied together");
   if (hypercube_bounds.size() == 0 && split_top_bottom)
