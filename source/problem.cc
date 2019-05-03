@@ -89,19 +89,14 @@ Problem<dim>::setup()
   }
 
   // Sanity checks on reflecting boundary condition iteraions
-  if (!description.has_scattering() && description.has_reflecting_bcs() && max_ref_its == 1)
+  if (description.has_reflecting_bcs() && max_ref_its == 1 &&
+      (!description.has_scattering() || (description.has_scattering() && !enable_dsa)))
   {
-    pcout << "\nProblem max_ref_its is set to 1, but there is no scattering and therefore\n"
-          << "the reflective boundary conditions will likely not converge. max_ref_its is\n"
-          << "being set to 4. Set it greater than 1 to escape this warning.\n\n";
-    max_ref_its = 4;
-  }
-  if (description.has_scattering() && !enable_dsa && max_ref_its == 1)
-  {
-    pcout << "\nProblem max_ref_its is set to 1 because DSA can converge the reflecting\n"
-          << "boundary conditions. However, you have disabled DSA and therefore the\n"
-          << "reflecting boundary conditions will likely not converge. max_ref_its is\n"
-          << "being set to 4. Set it greater than 1 to escape this warning.\n\n";
+    pcout << "\nProblem max_ref_its is set to 1 by default because DSA can converge the\n
+          << "reflecting boundary conditions. However, you have either disabled DSA or it\n
+          << "is disabled because the problem does not have scattering. Therefore, the\n"
+          << "reflecting boundary conditions may not converge. max_ref_its is being set\n"
+          << "to 4. Set it greater than 1 to eccape this warning.\n\n";
     max_ref_its = 4;
   }
   if (max_ref_its == 0)
