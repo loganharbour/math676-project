@@ -96,7 +96,7 @@ Problem<dim>::setup()
           << "reflecting boundary conditions. However, you have either disabled DSA or it\n
           << "is disabled because the problem does not have scattering. Therefore, the\n"
           << "reflecting boundary conditions may not converge. max_ref_its is being set\n"
-          << "to 4. Set it greater than 1 to eccape this warning.\n\n";
+          << "to 4. Set it greater than 1 to escape this warning.\n\n";
     max_ref_its = 4;
   }
   if (max_ref_its == 0)
