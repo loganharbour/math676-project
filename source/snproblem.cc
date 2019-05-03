@@ -35,6 +35,10 @@ SNProblem<dim>::SNProblem(Problem<dim> & problem)
   add_parameter("relative_tolerance", relative_tolerance);
   // Absolute tolerance (default: 1e-12)
   add_parameter("absolute_tolerance", absolute_tolerance);
+  // Maximum number of GMRES iterations (default: 1000)
+  add_parameter("max_gmres_iterations", max_gmres_iterations);
+  // Maximum number of GMRES restart (default: 30)
+  add_parameter("gmres_restart_parameter", gmres_restart_parameter);
 }
 
 template <int dim>
@@ -80,8 +84,8 @@ SNProblem<dim>::solve(const unsigned int d)
   TimerOutput::Scope t(timer, "SNProblem solve");
 
   system_solution = 0;
-  SolverControl control(1000, relative_tolerance * system_rhs.l2_norm() + absolute_tolerance);
-  TrilinosWrappers::SolverGMRES::AdditionalData gmres_data(detailed_solver_output);
+  SolverControl control(max_gmres_iterations, relative_tolerance * system_rhs.l2_norm() + absolute_tolerance);
+  TrilinosWrappers::SolverGMRES::AdditionalData gmres_data(detailed_solver_output,gmres_restart_parameter);
   TrilinosWrappers::SolverGMRES solver(control, gmres_data);
   LA::MPI::PreconditionAMG preconditioner;
   preconditioner.initialize(system_matrix);

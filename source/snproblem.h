@@ -103,6 +103,10 @@ private:
   double relative_tolerance = 1e-12;
   /// Absolute tolerance
   double absolute_tolerance = 1e-12;
+  /// Maximum number of GMRES iterations
+  unsigned int max_gmres_iterations = 1000;
+  // Maximum number of GMRES restart
+  unsigned int gmres_restart_parameter = 30;
 };
 } // namespace RadProblem
 
