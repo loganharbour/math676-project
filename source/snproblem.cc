@@ -84,8 +84,10 @@ SNProblem<dim>::solve(const unsigned int d)
   TimerOutput::Scope t(timer, "SNProblem solve");
 
   system_solution = 0;
-  SolverControl control(max_gmres_iterations, relative_tolerance * system_rhs.l2_norm() + absolute_tolerance);
-  TrilinosWrappers::SolverGMRES::AdditionalData gmres_data(detailed_solver_output,gmres_restart_parameter);
+  SolverControl control(max_gmres_iterations,
+                        relative_tolerance * system_rhs.l2_norm() + absolute_tolerance);
+  TrilinosWrappers::SolverGMRES::AdditionalData gmres_data(detailed_solver_output,
+                                                           gmres_restart_parameter);
   TrilinosWrappers::SolverGMRES solver(control, gmres_data);
   LA::MPI::PreconditionAMG preconditioner;
   preconditioner.initialize(system_matrix);
